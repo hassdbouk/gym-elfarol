@@ -1,0 +1,1449 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model version="NetLogo 7.0.4" snapToGrid="true">
+  <code><![CDATA[
+extensions [ csv ]
+
+;; Gym El Farol -- slot-based gym crowding model.
+;; Strategy machinery (random-strategy, predict-attendance, update-strategies)
+;; is copied unchanged from IABM chapter 3 El Farol (Rand & Wilensky 2007).
+;; Decision rule, information, and memory are the gym extension:
+;;   each tick = one 30-min evening slot (12 slots = one weekday, 16:00-22:00);
+;;   each agent wants one workout per day and chooses a slot or skips;
+;;   history is kept per slot, in days; info-mode adds intra-day counts.
+
+globals [
+  attendance            ;; occupancy of the current slot (original name)
+  history               ;; history of the slot now being decided (original name)
+  slot-histories        ;; list of n-slots histories, each length memory-size * 2
+  today-attendance      ;; occupancies already observed today
+  current-slot          ;; 0 .. n-slots - 1
+  current-day           ;; 1-based day counter
+  n-slots               ;; evening slots in a day (12)
+  slot-labels           ;; ["16:00" "16:30" ... "21:30"]
+  seed-means            ;; list of per-slot series used to seed memory
+  home-patches
+  gym-patches
+  crowded-patch
+  clock-patch
+  ;; post-burn-in accumulators for BehaviorSpace reporters
+  all-slot-attendance
+  n-slots-over
+  n-slots-recorded
+  n-good-visits
+  n-visits
+  n-skips
+  n-agent-days
+  peak-so-far
+]
+
+turtles-own [
+  strategies            ;; bag of linear predictors (original)
+  best-strategy         ;; currently selected strategy (original)
+  attend?               ;; going to the gym this slot? (original)
+  prediction            ;; predicted occupancy of this slot (original)
+  decided?              ;; already went or skipped today
+  went-today?
+  skipped-today?
+  good-visit?           ;; went and the chosen slot was at or under capacity
+]
+
+to setup
+  clear-all
+  set-default-shape turtles "person"
+  set n-slots 12
+  set slot-labels [ "16:00" "16:30" "17:00" "17:30" "18:00" "18:30"
+                    "19:00" "19:30" "20:00" "20:30" "21:00" "21:30" ]
+  set current-slot 0
+  set current-day 0
+  set attendance 0
+  set today-attendance []
+  set all-slot-attendance []
+  set n-slots-over 0
+  set n-slots-recorded 0
+  set n-good-visits 0
+  set n-visits 0
+  set n-skips 0
+  set n-agent-days 0
+  set peak-so-far 0
+
+  set home-patches patches with [ pycor < 0 or (pxcor < 0 and pycor >= 0) ]
+  ask home-patches [ set pcolor green ]
+  set gym-patches patches with [ pxcor > 0 and pycor > 0 ]
+  ask gym-patches [ set pcolor blue ]
+
+  load-seed-means
+  set slot-histories map [ m -> make-slot-history m ] seed-means
+  set history first slot-histories
+
+  ask patch (0.75 * max-pxcor) (0.50 * max-pycor) [
+    set crowded-patch self
+    set plabel-color yellow
+  ]
+  ask patch (0.75 * max-pxcor) (0.75 * max-pycor) [
+    set clock-patch self
+    set plabel-color white
+    set plabel first slot-labels
+  ]
+
+  create-turtles n-agents [
+    set color white
+    set decided? false
+    set went-today? false
+    set skipped-today? false
+    set good-visit? false
+    set attend? false
+    set prediction 0
+    move-to-empty-one-of home-patches
+    set strategies n-values number-strategies [ random-strategy ]
+    set best-strategy first strategies
+    update-strategies
+  ]
+  reset-ticks
+end
+
+to go
+  set current-slot ticks mod n-slots
+  if current-slot = 0 [
+    start-new-day
+  ]
+  if visualize? [
+    ask crowded-patch [ set plabel "" ]
+    ask clock-patch [ set plabel item current-slot slot-labels ]
+  ]
+
+  ;; swap this slot's per-day history into the original global so the
+  ;; unchanged strategy procedures can see it
+  set history item current-slot slot-histories
+
+  ask turtles with [ not decided? ] [
+    update-strategies
+    set prediction predict-attendance best-strategy sublist history 0 memory-size
+    set prediction apply-info-signal prediction
+    ifelse prediction <= capacity [
+      set attend? true
+      set decided? true
+      set went-today? true
+    ] [
+      set attend? false
+    ]
+  ]
+
+  if current-slot = n-slots - 1 [
+    ask turtles with [ not decided? ] [
+      ifelse must-go? [
+        set attend? true
+        set went-today? true
+      ] [
+        set attend? false
+        set skipped-today? true
+      ]
+      set decided? true
+    ]
+  ]
+
+  ;; Patch movement is display-only. BehaviorSpace turns visualize? off so
+  ;; the 3x3 / 30-seed grids are not dominated by empty-patch searches.
+  if visualize? [
+    ask turtles [
+      ifelse attend?
+        [ move-to-empty-one-of gym-patches ]
+        [ move-to-empty-one-of home-patches ]
+      update-color
+    ]
+  ]
+
+  set attendance count turtles with [ attend? ]
+  let over? attendance > capacity
+  ask turtles with [ attend? ] [
+    set good-visit? not over?
+  ]
+  if visualize? and over? [
+    ask crowded-patch [ set plabel "CROWDED" ]
+  ]
+
+  set history fput attendance but-last history
+  set slot-histories replace-item current-slot slot-histories history
+  set today-attendance lput attendance today-attendance
+  record-metrics over?
+  tick
+end
+
+to go-day
+  repeat n-slots [ go ]
+end
+
+to start-new-day
+  set current-day current-day + 1
+  set today-attendance []
+  ask turtles [
+    set decided? false
+    set went-today? false
+    set skipped-today? false
+    set good-visit? false
+    set attend? false
+    if visualize? [
+      set color white
+      move-to-empty-one-of home-patches
+    ]
+  ]
+end
+
+;; Intra-day information is blended with the inductive per-slot prediction.
+;; none:    inductive prediction only (classic El Farol, that slot's past days)
+;; live:    also see the actual count of the previous slot today
+;; delayed: also see the count from `delay` slots ago (default 2 = 1 hour)
+to-report apply-info-signal [base]
+  if info-mode = "none" [ report base ]
+  if current-slot = 0 [ report base ]
+  if info-mode = "live" [
+    report 0.5 * base + 0.5 * last today-attendance
+  ]
+  if info-mode = "delayed" [
+    if current-slot < delay [ report base ]
+    report 0.5 * base + 0.5 * item (current-slot - delay) today-attendance
+  ]
+  report base
+end
+
+to record-metrics [over?]
+  if current-day <= burn-in-days [ stop ]
+  set all-slot-attendance lput attendance all-slot-attendance
+  set n-slots-recorded n-slots-recorded + 1
+  if over? [ set n-slots-over n-slots-over + 1 ]
+  if attendance > peak-so-far [ set peak-so-far attendance ]
+  if current-slot = n-slots - 1 [
+    set n-agent-days n-agent-days + count turtles
+    set n-skips n-skips + count turtles with [ skipped-today? ]
+    set n-visits n-visits + count turtles with [ went-today? ]
+    set n-good-visits n-good-visits + count turtles with [ good-visit? ]
+  ]
+end
+
+to update-color  ;; turtle procedure
+  if attend? [ set color orange stop ]
+  if went-today? [ set color yellow stop ]
+  if skipped-today? [ set color gray stop ]
+  set color white
+end
+
+to-report make-slot-history [slot-series]
+  ifelse seed-from-data? [
+    report cycle-fill slot-series (memory-size * 2)
+  ] [
+    report n-values (memory-size * 2) [ random n-agents ]
+  ]
+end
+
+;; seed_history.csv is exported from data/params.json (demand_curve / seed_history)
+;; by analysis/calibrate.py. NetLogo cannot read JSON, so the csv extension is the
+;; bridge the plan asked for. Each row is one slot; weekday_scaled columns are
+;; successive "past days" cycled into that slot's memory.
+to load-seed-means
+  ;; fallback = scaled weekday-pooled means from params.json seed_history
+  set seed-means map [ m -> (list m) ] [ 27.97 30.58 30.05 31.32 28.80 28.78 26.72 25.80 24.59 26.87 22.70 26.23 ]
+  let path seed-file-path
+  if path = "" [ stop ]
+  let rows csv:from-file path
+  if length rows < 2 [ stop ]
+  let header first rows
+  let mean-col position "mean_occupancy_scaled" header
+  if not is-number? mean-col [ stop ]
+  let weekday-cols []
+  foreach [ "monday_scaled" "tuesday_scaled" "wednesday_scaled" "thursday_scaled" "friday_scaled" ] [ name ->
+    let col position name header
+    if is-number? col [
+      set weekday-cols lput col weekday-cols
+    ]
+  ]
+  let loaded []
+  foreach but-first rows [ row ->
+    let series []
+    foreach weekday-cols [ col ->
+      if length row > col [
+        let v coerce-number-or-none item col row
+        if is-number? v [
+          set series lput v series
+        ]
+      ]
+    ]
+    if empty? series and length row > mean-col [
+      let v coerce-number-or-none item mean-col row
+      if is-number? v [
+        set series lput v series
+      ]
+    ]
+    if not empty? series [
+      set loaded lput series loaded
+    ]
+  ]
+  if not empty? loaded [
+    set seed-means pad-or-trim loaded n-slots
+  ]
+end
+
+to-report seed-file-path
+  ;; GUI uses the model directory; headless often uses the project root.
+  if file-exists? "seed_history.csv" [
+    report "seed_history.csv"
+  ]
+  if file-exists? "netlogo/seed_history.csv" [
+    report "netlogo/seed_history.csv"
+  ]
+  if file-exists? "../data/processed/demand_curve.csv" [
+    report "../data/processed/demand_curve.csv"
+  ]
+  if file-exists? "data/processed/demand_curve.csv" [
+    report "data/processed/demand_curve.csv"
+  ]
+  report ""
+end
+
+to-report pad-or-trim [xs n]
+  if empty? xs [ report xs ]
+  if length xs >= n [ report sublist xs 0 n ]
+  report sentence xs n-values (n - length xs) [ last xs ]
+end
+
+to-report cycle-fill [xs n]
+  if empty? xs [ report n-values n [ 0 ] ]
+  let k length xs
+  let out []
+  let i 0
+  repeat n [
+    set out lput item (i mod k) xs out
+    set i i + 1
+  ]
+  report out
+end
+
+to-report coerce-number [v]
+  let parsed coerce-number-or-none v
+  ifelse is-number? parsed [ report parsed ] [ report 0 ]
+end
+
+to-report coerce-number-or-none [v]
+  if is-number? v [ report v ]
+  if is-string? v [
+    if v = "" or v = "null" or v = "None" [ report false ]
+    let parsed 0
+    let ok? true
+    carefully [ set parsed read-from-string v ] [ set ok? false ]
+    if ok? and is-number? parsed [ report parsed ]
+    report false
+  ]
+  report false
+end
+
+;; ---------- BehaviorSpace reporters (post burn-in) ----------
+
+to-report peak-occupancy
+  report peak-so-far
+end
+
+to-report pct-slots-over-capacity
+  if n-slots-recorded = 0 [ report 0 ]
+  report 100 * n-slots-over / n-slots-recorded
+end
+
+to-report occupancy-variance
+  if not is-list? all-slot-attendance [ report 0 ]
+  if length all-slot-attendance < 2 [ report 0 ]
+  let mu mean all-slot-attendance
+  report mean map [ x -> (x - mu) * (x - mu) ] all-slot-attendance
+end
+
+to-report good-visit-rate
+  if n-visits = 0 [ report 0 ]
+  report n-good-visits / n-visits
+end
+
+to-report skip-rate
+  if n-agent-days = 0 [ report 0 ]
+  report n-skips / n-agent-days
+end
+
+to-report lag1-autocorr
+  if not is-list? all-slot-attendance [ report 0 ]
+  if length all-slot-attendance < 3 [ report 0 ]
+  let xs but-last all-slot-attendance
+  let ys but-first all-slot-attendance
+  let mx mean xs
+  let my mean ys
+  let num sum (map [ [ x y ] -> (x - mx) * (y - my) ] xs ys)
+  let ss-x sum map [ x -> (x - mx) * (x - mx) ] xs
+  let ss-y sum map [ y -> (y - my) * (y - my) ] ys
+  if ss-x * ss-y = 0 [ report 0 ]
+  report num / sqrt (ss-x * ss-y)
+end
+
+to-report current-slot-label
+  if not is-list? slot-labels [ report "--" ]
+  if current-slot >= length slot-labels [ report "--" ]
+  report item current-slot slot-labels
+end
+
+;; ---------- original El Farol strategy machinery (unchanged) ----------
+
+;; determines which strategy would have predicted the best results had it been used this round.
+;; the best strategy is the one that has the sum of smallest differences between the
+;; current attendance and the predicted attendance for each of the preceding
+;; weeks (going back MEMORY-SIZE weeks)
+;; this does not change the strategies at all, but it does (potentially) change the one
+;; currently being used and updates the performance of all strategies
+to update-strategies
+  ;; initialize best-score to a maximum, which is the lowest possible score
+  let best-score memory-size * 100 + 1
+  foreach strategies [ the-strategy ->
+    let score 0
+    let week 1
+    repeat memory-size [
+      set prediction predict-attendance the-strategy sublist history week (week + memory-size)
+      set score score + abs (item (week - 1) history - prediction)
+      set week week + 1
+    ]
+    if (score <= best-score) [
+      set best-score score
+      set best-strategy the-strategy
+    ]
+  ]
+end
+
+;; this reports a random strategy. a strategy is just a set of weights from -1.0 to 1.0 which
+;; determines how much emphasis is put on each previous time period when making
+;; an attendance prediction for the next time period
+to-report random-strategy
+  report n-values (memory-size + 1) [1.0 - random-float 2.0]
+end
+
+;; This reports an agent's prediction of the current attendance
+;; using a particular strategy and portion of the attendance history.
+;; More specifically, the strategy is then described by the formula
+;; p(t) = x(t - 1) * a(t - 1) + x(t - 2) * a(t -2) +..
+;;      ... + x(t - MEMORY-SIZE) * a(t - MEMORY-SIZE) + c * 100,
+;; where p(t) is the prediction at time t, x(t) is the attendance of the bar at time t,
+;; a(t) is the weight for time t, c is a constant, and MEMORY-SIZE is an external parameter.
+to-report predict-attendance [strategy subhistory]
+  ;; the first element of the strategy is the constant, c, in the prediction formula.
+  ;; one can think of it as the the agent's prediction of the bar's attendance
+  ;; in the absence of any other data
+  ;; then we multiply each week in the history by its respective weight
+  report 100 * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
+end
+
+;; In this model it doesn't really matter exactly which patch
+;; a turtle is on, only whether the turtle is in the home area
+;; or the gym area.  Nonetheless, to make a nice visualization
+;; this procedure is used to ensure that we only have one
+;; turtle per patch.
+to move-to-empty-one-of [locations]  ;; turtle procedure
+  let empties locations with [ not any? turtles-here ]
+  ifelse any? empties
+    [ move-to one-of empties ]
+    [ if any? locations [ move-to one-of locations ] ]
+end
+
+; Copyright 2007 Uri Wilensky. Gym-slot extension 2026.
+; See Info tab for full copyright and license.
+]]></code>
+  <widgets>
+    <view x="300" wrappingAllowedX="true" y="10" frameRate="30.0" minPycor="-17" height="424" showTickCounter="true" patchSize="12.0" fontSize="14" wrappingAllowedY="true" width="424" tickCounterLabel="ticks" maxPycor="17" updateMode="1" maxPxcor="17" minPxcor="-17"></view>
+    <slider x="10" step="1" y="10" max="200" width="270" display="n-agents" height="50" min="10" direction="Horizontal" default="100.0" variable="n-agents"></slider>
+    <slider x="10" step="1" y="60" max="100" width="270" display="capacity" height="50" min="1" direction="Horizontal" default="38.0" variable="capacity"></slider>
+    <slider x="10" step="1" y="110" max="10" width="270" display="memory-size" height="50" min="1" direction="Horizontal" default="5.0" variable="memory-size"></slider>
+    <slider x="10" step="1" y="160" max="20" width="270" display="number-strategies" height="50" min="1" direction="Horizontal" default="10.0" variable="number-strategies"></slider>
+    <slider x="10" step="1" y="210" max="6" width="270" display="delay" height="50" min="1" direction="Horizontal" default="2.0" variable="delay"></slider>
+    <slider x="10" step="1" y="260" max="20" width="270" display="burn-in-days" height="50" min="0" direction="Horizontal" default="10.0" variable="burn-in-days"></slider>
+    <chooser x="10" y="310" height="60" variable="info-mode" current="0" width="270" display="info-mode">
+      <choice type="string" value="none"></choice>
+      <choice type="string" value="live"></choice>
+      <choice type="string" value="delayed"></choice>
+    </chooser>
+    <switch x="10" y="375" height="40" on="false" variable="must-go?" width="130" display="must-go?"></switch>
+    <switch x="150" y="375" height="40" on="true" variable="seed-from-data?" width="130" display="seed-from-data?"></switch>
+    <switch x="10" y="475" height="40" on="true" variable="visualize?" width="130" display="visualize?"></switch>
+    <button x="10" y="425" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="80" display="setup">setup</button>
+    <button x="100" y="425" height="40" disableUntilTicks="true" forever="true" kind="Observer" width="80" display="go">go</button>
+    <button x="190" y="425" height="40" disableUntilTicks="true" forever="false" kind="Observer" width="90" display="go-day">go-day</button>
+    <monitor x="735" precision="0" y="10" height="55" fontSize="11" width="140" display="day">current-day</monitor>
+    <monitor x="880" precision="0" y="10" height="55" fontSize="11" width="140" display="slot">current-slot</monitor>
+    <monitor x="735" precision="0" y="70" height="55" fontSize="11" width="140" display="attendance">attendance</monitor>
+    <monitor x="880" precision="0" y="70" height="55" fontSize="11" width="140" display="time">current-slot-label</monitor>
+    <monitor x="735" precision="1" y="130" height="55" fontSize="11" width="140" display="peak-occupancy">peak-occupancy</monitor>
+    <monitor x="880" precision="1" y="130" height="55" fontSize="11" width="140" display="pct-over-cap">pct-slots-over-capacity</monitor>
+    <monitor x="735" precision="2" y="190" height="55" fontSize="11" width="140" display="occupancy-var">occupancy-variance</monitor>
+    <monitor x="880" precision="3" y="190" height="55" fontSize="11" width="140" display="lag1-autocorr">lag1-autocorr</monitor>
+    <monitor x="735" precision="3" y="250" height="55" fontSize="11" width="140" display="good-visit-rate">good-visit-rate</monitor>
+    <monitor x="880" precision="3" y="250" height="55" fontSize="11" width="140" display="skip-rate">skip-rate</monitor>
+    <plot x="300" autoPlotX="true" yMax="100.0" autoPlotY="true" yAxis="Occupancy" y="445" xMin="0.0" height="200" legend="true" xMax="10.0" yMin="0.0" width="424" xAxis="Slot ticks" display="Gym occupancy">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="occupancy" color="-16777216" legend="true">
+        <setup></setup>
+        <update>plot attendance</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="capacity" color="-2674135" legend="true">
+        <setup></setup>
+        <update>plot-pen-reset
+plotxy 0 capacity
+plotxy plot-x-max capacity</update>
+      </pen>
+    </plot>
+    <plot x="735" autoPlotX="false" yMax="100.0" autoPlotY="true" yAxis="Occupancy" y="315" xMin="0.0" height="190" legend="false" xMax="12.0" yMin="0.0" width="285" xAxis="Slot" display="Today by slot">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="1" display="today" color="-13345367" legend="true">
+        <setup></setup>
+        <update>plot-pen-reset
+if is-list? today-attendance [
+  let i 0
+  foreach today-attendance [ a -&gt;
+    plotxy i a
+    set i i + 1
+  ]
+]</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="capacity" color="-2674135" legend="true">
+        <setup></setup>
+        <update>plot-pen-reset
+plotxy 0 capacity
+plotxy plot-x-max capacity</update>
+      </pen>
+    </plot>
+  </widgets>
+  <info><![CDATA[
+## ACKNOWLEDGMENT
+
+This model extends the IABM Chapter 3 El Farol model:
+
+* Rand, W., Wilensky, U. (2007). NetLogo El Farol model. http://ccl.northwestern.edu/netlogo/models/ElFarol
+* Wilensky, U. & Rand, W. (2015). Introduction to Agent-Based Modeling. MIT Press.
+
+The inductive strategy machinery (`random-strategy`, `predict-attendance`, `update-strategies`) is unchanged from that model. The gym-slot decision rule, per-slot memory, and `info-mode` are the extension.
+
+## WHAT IS IT?
+
+Western Student Recreation Centre (WSRC) weight rooms are a shared resource with a capacity. Students want one evening workout and prefer a half-hour that is not overcrowded. They cannot coordinate, and they only see a limited history of past occupancy -- plus, depending on the information condition, a live or delayed count from earlier tonight.
+
+This is Arthur's (1994) El Farol bar problem recast as a **congestion / minority game over K evening slots**. The question the experiments ask is whether publishing live occupancy reduces overcrowding, and whether a delayed feed (the real WSRC page updates every 30 minutes, plus travel time) creates oscillation.
+
+Default parameters (`n-agents` = 100, `capacity` = 38, 12 slots from 16:00 to 22:00) come from `data/params.json`, which scales observed 3WR+4WR counts so that the population is 100 and capacity is the scaled 95th percentile.
+
+## HOW IT WORKS
+
+Each tick is one 30-minute slot. A day is 12 slots. Each agent wants at most one visit per day.
+
+At slot *s*, every agent who has not yet gone or skipped:
+
+1. Swaps that slot's past-day history into the original `history` list.
+2. Picks the strategy in its bag with the lowest mean absolute error on that slot (unchanged `update-strategies`).
+3. Forms an inductive prediction of tonight's occupancy in slot *s* (unchanged `predict-attendance`).
+4. If `info-mode` is `live` or `delayed`, blends that prediction 50/50 with the intra-day signal (previous slot tonight, or the slot `delay` slots ago). Slot 0, and delayed slots before the lag is available, use the inductive prediction only.
+5. Goes if the (possibly blended) prediction is at most `capacity`; otherwise waits.
+
+Agents still waiting in the last slot either go anyway (`must-go?` on) or skip (`must-go?` off).
+
+Memory is **per slot, in days**. Each slot stores `memory-size * 2` past occupancies, the extra length needed so a strategy can be scored `memory-size` days back while still seeing a full window. This is the original El Farol bookkeeping, just one list per slot instead of one Thursday list.
+
+If `seed-from-data?` is on, those lists are filled from `seed_history.csv`, which `analysis/calibrate.py` exports from `demand_curve` / `seed_history` in `data/params.json` (NetLogo reads it with the `csv` extension). Weekday-scaled means cycle through each slot's memory so the first few "past days" have real day-to-day shape; if those columns are missing, the pooled slot mean is repeated. If the file is missing, the same pooled means are hard-coded from `params.json`. If the switch is off, history is random in `0 .. n-agents - 1`, as in the original model.
+
+A visit is a **good visit** when the agent went and the slot ended at or under capacity. Skip has payoff 0.
+
+## HOW TO USE IT
+
+Set `info-mode`, `memory-size`, `number-strategies`, and `delay` (used only when `info-mode` is `delayed`; 2 = one hour). Press SETUP, then GO (one slot) or GO-DAY (12 slots).
+
+Colours: white = still deciding, orange = in the gym this slot, yellow = already worked out, gray = skipped. Green patches are home; blue patches are the gym.
+
+Monitors on the right are the BehaviorSpace reporters, computed after `burn-in-days` (default 10):
+
+* `peak-occupancy` -- max slot occupancy after burn-in
+* `pct-slots-over-capacity` -- percent of recorded slots with attendance > capacity
+* `occupancy-variance` -- variance of recorded slot occupancies
+* `good-visit-rate` -- good visits / visits
+* `skip-rate` -- skips / agent-days
+* `lag1-autocorr` -- Pearson correlation of occupancy at consecutive slots
+
+A typical experiment run is 40 days (480 ticks) with the first 10 days discarded. Run `python analysis/run_pilot.py` for the `info-memory-pilot` (5 seeds) and `info-memory-grid` (30 seeds) experiments, or open BehaviorSpace on this model. Both record the six reporters at the end of each run. Turn `visualize?` off for BehaviorSpace; patch movement is display-only and does not change the reporters.
+
+## THINGS TO NOTICE
+
+Under `none`, this is twelve coupled El Farol games: agents only remember past days of the slot they are considering. Attendance in a slot should wander around capacity once strategies adapt.
+
+Under `live`, a crowded slot should push remaining agents later (or to skip), which can flatten the evening peak.
+
+Under `delayed`, agents react to a stale count. That lagged negative feedback is the candidate mechanism for oscillation (higher occupancy variance; `lag1-autocorr` of the slot series).
+
+## THINGS TO TRY
+
+Compare `info-mode` = none / live / delayed at `memory-size` 1, 5, 10. Turn `must-go?` on to force last-slot attendance. Turn `seed-from-data?` off to recover the original random history.
+
+## FORMAL MODEL
+
+N agents, K = 12 slots, action a_i in {1..K, skip}. Slot payoff u = 1 if n_s <= C, 0 if over, 0 for skip. Agents use inductive prediction with a bag of S linear predictors over the last M days of that slot, choosing the best by MAE -- a congestion/minority game solved by inductive learning (Arthur 1994; Fogel et al. 1999). `info-mode` adds an intra-day observation of n_{s-1} or n_{s-delay} to the prediction.
+
+## CREDITS AND REFERENCES
+
+Arthur, W. B. (1994). Inductive reasoning and bounded rationality. American Economic Review 84(2), 406-411.
+
+Fogel, D. B., Chellapilla, K., and Angeline, P. J. (1999). Inductive reasoning and bounded rationality reconsidered. IEEE Transactions on Evolutionary Computation 3(2), 142-146.
+
+Rand, W. and Wilensky, U. (2007). NetLogo El Farol model.
+
+## COPYRIGHT AND LICENSE
+
+The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. This gym-slot extension keeps that strategy code and adds the WSRC slot/information layer for a course project.
+]]></info>
+  <turtleShapes>
+    <shape name="default" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="5"></point>
+        <point x="40" y="250"></point>
+        <point x="150" y="205"></point>
+        <point x="260" y="250"></point>
+      </polygon>
+    </shape>
+    <shape name="airplane" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="0"></point>
+        <point x="135" y="15"></point>
+        <point x="120" y="60"></point>
+        <point x="120" y="105"></point>
+        <point x="15" y="165"></point>
+        <point x="15" y="195"></point>
+        <point x="120" y="180"></point>
+        <point x="135" y="240"></point>
+        <point x="105" y="270"></point>
+        <point x="120" y="285"></point>
+        <point x="150" y="270"></point>
+        <point x="180" y="285"></point>
+        <point x="210" y="270"></point>
+        <point x="165" y="240"></point>
+        <point x="180" y="180"></point>
+        <point x="285" y="195"></point>
+        <point x="285" y="165"></point>
+        <point x="180" y="105"></point>
+        <point x="180" y="60"></point>
+        <point x="165" y="15"></point>
+      </polygon>
+    </shape>
+    <shape name="arrow" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="0"></point>
+        <point x="0" y="150"></point>
+        <point x="105" y="150"></point>
+        <point x="105" y="293"></point>
+        <point x="195" y="293"></point>
+        <point x="195" y="150"></point>
+        <point x="300" y="150"></point>
+      </polygon>
+    </shape>
+    <shape name="box" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="285"></point>
+        <point x="285" y="225"></point>
+        <point x="285" y="75"></point>
+        <point x="150" y="135"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="135"></point>
+        <point x="15" y="75"></point>
+        <point x="150" y="15"></point>
+        <point x="285" y="75"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="15" y="75"></point>
+        <point x="15" y="225"></point>
+        <point x="150" y="285"></point>
+        <point x="150" y="135"></point>
+      </polygon>
+      <line endX="150" startY="285" marked="false" color="255" endY="135" startX="150"></line>
+      <line endX="15" startY="135" marked="false" color="255" endY="75" startX="150"></line>
+      <line endX="285" startY="135" marked="false" color="255" endY="75" startX="150"></line>
+    </shape>
+    <shape name="bug" rotatable="true" editableColorIndex="0">
+      <circle x="96" y="182" marked="true" color="-1920102913" diameter="108" filled="true"></circle>
+      <circle x="110" y="127" marked="true" color="-1920102913" diameter="80" filled="true"></circle>
+      <circle x="110" y="75" marked="true" color="-1920102913" diameter="80" filled="true"></circle>
+      <line endX="80" startY="100" marked="true" color="-1920102913" endY="30" startX="150"></line>
+      <line endX="220" startY="100" marked="true" color="-1920102913" endY="30" startX="150"></line>
+    </shape>
+    <shape name="butterfly" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="165"></point>
+        <point x="209" y="199"></point>
+        <point x="225" y="225"></point>
+        <point x="225" y="255"></point>
+        <point x="195" y="270"></point>
+        <point x="165" y="255"></point>
+        <point x="150" y="240"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="165"></point>
+        <point x="89" y="198"></point>
+        <point x="75" y="225"></point>
+        <point x="75" y="255"></point>
+        <point x="105" y="270"></point>
+        <point x="135" y="255"></point>
+        <point x="150" y="240"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="139" y="148"></point>
+        <point x="100" y="105"></point>
+        <point x="55" y="90"></point>
+        <point x="25" y="90"></point>
+        <point x="10" y="105"></point>
+        <point x="10" y="135"></point>
+        <point x="25" y="180"></point>
+        <point x="40" y="195"></point>
+        <point x="85" y="194"></point>
+        <point x="139" y="163"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="162" y="150"></point>
+        <point x="200" y="105"></point>
+        <point x="245" y="90"></point>
+        <point x="275" y="90"></point>
+        <point x="290" y="105"></point>
+        <point x="290" y="135"></point>
+        <point x="275" y="180"></point>
+        <point x="260" y="195"></point>
+        <point x="215" y="195"></point>
+        <point x="162" y="165"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="255"></point>
+        <point x="135" y="225"></point>
+        <point x="120" y="150"></point>
+        <point x="135" y="120"></point>
+        <point x="150" y="105"></point>
+        <point x="165" y="120"></point>
+        <point x="180" y="150"></point>
+        <point x="165" y="225"></point>
+      </polygon>
+      <circle x="135" y="90" marked="false" color="255" diameter="30" filled="true"></circle>
+      <line endX="195" startY="105" marked="false" color="255" endY="60" startX="150"></line>
+      <line endX="105" startY="105" marked="false" color="255" endY="60" startX="150"></line>
+    </shape>
+    <shape name="car" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="300" y="180"></point>
+        <point x="279" y="164"></point>
+        <point x="261" y="144"></point>
+        <point x="240" y="135"></point>
+        <point x="226" y="132"></point>
+        <point x="213" y="106"></point>
+        <point x="203" y="84"></point>
+        <point x="185" y="63"></point>
+        <point x="159" y="50"></point>
+        <point x="135" y="50"></point>
+        <point x="75" y="60"></point>
+        <point x="0" y="150"></point>
+        <point x="0" y="165"></point>
+        <point x="0" y="225"></point>
+        <point x="300" y="225"></point>
+        <point x="300" y="180"></point>
+      </polygon>
+      <circle x="180" y="180" marked="false" color="255" diameter="90" filled="true"></circle>
+      <circle x="30" y="180" marked="false" color="255" diameter="90" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="162" y="80"></point>
+        <point x="132" y="78"></point>
+        <point x="134" y="135"></point>
+        <point x="209" y="135"></point>
+        <point x="194" y="105"></point>
+        <point x="189" y="96"></point>
+        <point x="180" y="89"></point>
+      </polygon>
+      <circle x="47" y="195" marked="true" color="-1920102913" diameter="58" filled="true"></circle>
+      <circle x="195" y="195" marked="true" color="-1920102913" diameter="58" filled="true"></circle>
+    </shape>
+    <shape name="circle" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+    </shape>
+    <shape name="circle 2" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+      <circle x="30" y="30" marked="false" color="255" diameter="240" filled="true"></circle>
+    </shape>
+    <shape name="cow" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="200" y="193"></point>
+        <point x="197" y="249"></point>
+        <point x="179" y="249"></point>
+        <point x="177" y="196"></point>
+        <point x="166" y="187"></point>
+        <point x="140" y="189"></point>
+        <point x="93" y="191"></point>
+        <point x="78" y="179"></point>
+        <point x="72" y="211"></point>
+        <point x="49" y="209"></point>
+        <point x="48" y="181"></point>
+        <point x="37" y="149"></point>
+        <point x="25" y="120"></point>
+        <point x="25" y="89"></point>
+        <point x="45" y="72"></point>
+        <point x="103" y="84"></point>
+        <point x="179" y="75"></point>
+        <point x="198" y="76"></point>
+        <point x="252" y="64"></point>
+        <point x="272" y="81"></point>
+        <point x="293" y="103"></point>
+        <point x="285" y="121"></point>
+        <point x="255" y="121"></point>
+        <point x="242" y="118"></point>
+        <point x="224" y="167"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="73" y="210"></point>
+        <point x="86" y="251"></point>
+        <point x="62" y="249"></point>
+        <point x="48" y="208"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="25" y="114"></point>
+        <point x="16" y="195"></point>
+        <point x="9" y="204"></point>
+        <point x="23" y="213"></point>
+        <point x="25" y="200"></point>
+        <point x="39" y="123"></point>
+      </polygon>
+    </shape>
+    <shape name="cylinder" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+    </shape>
+    <shape name="dot" rotatable="false" editableColorIndex="0">
+      <circle x="90" y="90" marked="true" color="-1920102913" diameter="120" filled="true"></circle>
+    </shape>
+    <shape name="face happy" rotatable="false" editableColorIndex="0">
+      <circle x="8" y="8" marked="true" color="-1920102913" diameter="285" filled="true"></circle>
+      <circle x="60" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <circle x="180" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="255"></point>
+        <point x="90" y="239"></point>
+        <point x="62" y="213"></point>
+        <point x="47" y="191"></point>
+        <point x="67" y="179"></point>
+        <point x="90" y="203"></point>
+        <point x="109" y="218"></point>
+        <point x="150" y="225"></point>
+        <point x="192" y="218"></point>
+        <point x="210" y="203"></point>
+        <point x="227" y="181"></point>
+        <point x="251" y="194"></point>
+        <point x="236" y="217"></point>
+        <point x="212" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="face neutral" rotatable="false" editableColorIndex="0">
+      <circle x="8" y="7" marked="true" color="-1920102913" diameter="285" filled="true"></circle>
+      <circle x="60" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <circle x="180" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <rectangle endX="240" startY="195" marked="false" color="255" endY="225" startX="60" filled="true"></rectangle>
+    </shape>
+    <shape name="face sad" rotatable="false" editableColorIndex="0">
+      <circle x="8" y="8" marked="true" color="-1920102913" diameter="285" filled="true"></circle>
+      <circle x="60" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <circle x="180" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="168"></point>
+        <point x="90" y="184"></point>
+        <point x="62" y="210"></point>
+        <point x="47" y="232"></point>
+        <point x="67" y="244"></point>
+        <point x="90" y="220"></point>
+        <point x="109" y="205"></point>
+        <point x="150" y="198"></point>
+        <point x="192" y="205"></point>
+        <point x="210" y="220"></point>
+        <point x="227" y="242"></point>
+        <point x="251" y="229"></point>
+        <point x="236" y="206"></point>
+        <point x="212" y="183"></point>
+      </polygon>
+    </shape>
+    <shape name="fish" rotatable="false" editableColorIndex="0">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="44" y="131"></point>
+        <point x="21" y="87"></point>
+        <point x="15" y="86"></point>
+        <point x="0" y="120"></point>
+        <point x="15" y="150"></point>
+        <point x="0" y="180"></point>
+        <point x="13" y="214"></point>
+        <point x="20" y="212"></point>
+        <point x="45" y="166"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="135" y="195"></point>
+        <point x="119" y="235"></point>
+        <point x="95" y="218"></point>
+        <point x="76" y="210"></point>
+        <point x="46" y="204"></point>
+        <point x="60" y="165"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="75" y="45"></point>
+        <point x="83" y="77"></point>
+        <point x="71" y="103"></point>
+        <point x="86" y="114"></point>
+        <point x="166" y="78"></point>
+        <point x="135" y="60"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="30" y="136"></point>
+        <point x="151" y="77"></point>
+        <point x="226" y="81"></point>
+        <point x="280" y="119"></point>
+        <point x="292" y="146"></point>
+        <point x="292" y="160"></point>
+        <point x="287" y="170"></point>
+        <point x="270" y="195"></point>
+        <point x="195" y="210"></point>
+        <point x="151" y="212"></point>
+        <point x="30" y="166"></point>
+      </polygon>
+      <circle x="215" y="106" marked="false" color="255" diameter="30" filled="true"></circle>
+    </shape>
+    <shape name="flag" rotatable="false" editableColorIndex="0">
+      <rectangle endX="75" startY="15" marked="true" color="-1920102913" endY="300" startX="60" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="90" y="150"></point>
+        <point x="270" y="90"></point>
+        <point x="90" y="30"></point>
+      </polygon>
+      <line endX="90" startY="135" marked="true" color="-1920102913" endY="135" startX="75"></line>
+      <line endX="90" startY="45" marked="true" color="-1920102913" endY="45" startX="75"></line>
+    </shape>
+    <shape name="flower" rotatable="false" editableColorIndex="0">
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="135" y="120"></point>
+        <point x="165" y="165"></point>
+        <point x="180" y="210"></point>
+        <point x="180" y="240"></point>
+        <point x="150" y="300"></point>
+        <point x="165" y="300"></point>
+        <point x="195" y="240"></point>
+        <point x="195" y="195"></point>
+        <point x="165" y="135"></point>
+      </polygon>
+      <circle x="85" y="132" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="130" y="147" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="192" y="85" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="85" y="40" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="177" y="40" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="177" y="132" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="70" y="85" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="130" y="25" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="96" y="51" marked="true" color="-1920102913" diameter="108" filled="true"></circle>
+      <circle x="113" y="68" marked="false" color="255" diameter="74" filled="true"></circle>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="189" y="233"></point>
+        <point x="219" y="188"></point>
+        <point x="249" y="173"></point>
+        <point x="279" y="188"></point>
+        <point x="234" y="218"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="180" y="255"></point>
+        <point x="150" y="210"></point>
+        <point x="105" y="210"></point>
+        <point x="75" y="240"></point>
+        <point x="135" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="house" rotatable="false" editableColorIndex="0">
+      <rectangle endX="255" startY="120" marked="true" color="-1920102913" endY="285" startX="45" filled="true"></rectangle>
+      <rectangle endX="180" startY="210" marked="false" color="255" endY="285" startX="120" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="15" y="120"></point>
+        <point x="150" y="15"></point>
+        <point x="285" y="120"></point>
+      </polygon>
+      <line endX="270" startY="120" marked="false" color="255" endY="120" startX="30"></line>
+    </shape>
+    <shape name="leaf" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="210"></point>
+        <point x="135" y="195"></point>
+        <point x="120" y="210"></point>
+        <point x="60" y="210"></point>
+        <point x="30" y="195"></point>
+        <point x="60" y="180"></point>
+        <point x="60" y="165"></point>
+        <point x="15" y="135"></point>
+        <point x="30" y="120"></point>
+        <point x="15" y="105"></point>
+        <point x="40" y="104"></point>
+        <point x="45" y="90"></point>
+        <point x="60" y="90"></point>
+        <point x="90" y="105"></point>
+        <point x="105" y="120"></point>
+        <point x="120" y="120"></point>
+        <point x="105" y="60"></point>
+        <point x="120" y="60"></point>
+        <point x="135" y="30"></point>
+        <point x="150" y="15"></point>
+        <point x="165" y="30"></point>
+        <point x="180" y="60"></point>
+        <point x="195" y="60"></point>
+        <point x="180" y="120"></point>
+        <point x="195" y="120"></point>
+        <point x="210" y="105"></point>
+        <point x="240" y="90"></point>
+        <point x="255" y="90"></point>
+        <point x="263" y="104"></point>
+        <point x="285" y="105"></point>
+        <point x="270" y="120"></point>
+        <point x="285" y="135"></point>
+        <point x="240" y="165"></point>
+        <point x="240" y="180"></point>
+        <point x="270" y="195"></point>
+        <point x="240" y="210"></point>
+        <point x="180" y="210"></point>
+        <point x="165" y="195"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="195"></point>
+        <point x="135" y="240"></point>
+        <point x="120" y="255"></point>
+        <point x="105" y="255"></point>
+        <point x="105" y="285"></point>
+        <point x="135" y="285"></point>
+        <point x="165" y="240"></point>
+        <point x="165" y="195"></point>
+      </polygon>
+    </shape>
+    <shape name="line" rotatable="true" editableColorIndex="0">
+      <line endX="150" startY="0" marked="true" color="-1920102913" endY="300" startX="150"></line>
+    </shape>
+    <shape name="line half" rotatable="true" editableColorIndex="0">
+      <line endX="150" startY="0" marked="true" color="-1920102913" endY="150" startX="150"></line>
+    </shape>
+    <shape name="pentagon" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="15"></point>
+        <point x="15" y="120"></point>
+        <point x="60" y="285"></point>
+        <point x="240" y="285"></point>
+        <point x="285" y="120"></point>
+      </polygon>
+    </shape>
+    <shape name="person" rotatable="false" editableColorIndex="0">
+      <circle x="110" y="5" marked="true" color="-1920102913" diameter="80" filled="true"></circle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="105" y="90"></point>
+        <point x="120" y="195"></point>
+        <point x="90" y="285"></point>
+        <point x="105" y="300"></point>
+        <point x="135" y="300"></point>
+        <point x="150" y="225"></point>
+        <point x="165" y="300"></point>
+        <point x="195" y="300"></point>
+        <point x="210" y="285"></point>
+        <point x="180" y="195"></point>
+        <point x="195" y="90"></point>
+      </polygon>
+      <rectangle endX="172" startY="79" marked="true" color="-1920102913" endY="94" startX="127" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="195" y="90"></point>
+        <point x="240" y="150"></point>
+        <point x="225" y="180"></point>
+        <point x="165" y="105"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="105" y="90"></point>
+        <point x="60" y="150"></point>
+        <point x="75" y="180"></point>
+        <point x="135" y="105"></point>
+      </polygon>
+    </shape>
+    <shape name="plant" rotatable="false" editableColorIndex="0">
+      <rectangle endX="165" startY="90" marked="true" color="-1920102913" endY="300" startX="135" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="255"></point>
+        <point x="90" y="210"></point>
+        <point x="45" y="195"></point>
+        <point x="75" y="255"></point>
+        <point x="135" y="285"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="165" y="255"></point>
+        <point x="210" y="210"></point>
+        <point x="255" y="195"></point>
+        <point x="225" y="255"></point>
+        <point x="165" y="285"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="180"></point>
+        <point x="90" y="135"></point>
+        <point x="45" y="120"></point>
+        <point x="75" y="180"></point>
+        <point x="135" y="210"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="165" y="180"></point>
+        <point x="165" y="210"></point>
+        <point x="225" y="180"></point>
+        <point x="255" y="120"></point>
+        <point x="210" y="135"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="105"></point>
+        <point x="90" y="60"></point>
+        <point x="45" y="45"></point>
+        <point x="75" y="105"></point>
+        <point x="135" y="135"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="165" y="105"></point>
+        <point x="165" y="135"></point>
+        <point x="225" y="105"></point>
+        <point x="255" y="45"></point>
+        <point x="210" y="60"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="90"></point>
+        <point x="120" y="45"></point>
+        <point x="150" y="15"></point>
+        <point x="180" y="45"></point>
+        <point x="165" y="90"></point>
+      </polygon>
+    </shape>
+    <shape name="square" rotatable="false" editableColorIndex="0">
+      <rectangle endX="270" startY="30" marked="true" color="-1920102913" endY="270" startX="30" filled="true"></rectangle>
+    </shape>
+    <shape name="square 2" rotatable="false" editableColorIndex="0">
+      <rectangle endX="270" startY="30" marked="true" color="-1920102913" endY="270" startX="30" filled="true"></rectangle>
+      <rectangle endX="240" startY="60" marked="false" color="255" endY="240" startX="60" filled="true"></rectangle>
+    </shape>
+    <shape name="star" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="151" y="1"></point>
+        <point x="185" y="108"></point>
+        <point x="298" y="108"></point>
+        <point x="207" y="175"></point>
+        <point x="242" y="282"></point>
+        <point x="151" y="216"></point>
+        <point x="59" y="282"></point>
+        <point x="94" y="175"></point>
+        <point x="3" y="108"></point>
+        <point x="116" y="108"></point>
+      </polygon>
+    </shape>
+    <shape name="target" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+      <circle x="30" y="30" marked="false" color="255" diameter="240" filled="true"></circle>
+      <circle x="60" y="60" marked="true" color="-1920102913" diameter="180" filled="true"></circle>
+      <circle x="90" y="90" marked="false" color="255" diameter="120" filled="true"></circle>
+      <circle x="120" y="120" marked="true" color="-1920102913" diameter="60" filled="true"></circle>
+    </shape>
+    <shape name="tree" rotatable="false" editableColorIndex="0">
+      <circle x="118" y="3" marked="true" color="-1920102913" diameter="94" filled="true"></circle>
+      <rectangle endX="180" startY="195" marked="false" color="-1653716737" endY="300" startX="120" filled="true"></rectangle>
+      <circle x="65" y="21" marked="true" color="-1920102913" diameter="108" filled="true"></circle>
+      <circle x="116" y="41" marked="true" color="-1920102913" diameter="127" filled="true"></circle>
+      <circle x="45" y="90" marked="true" color="-1920102913" diameter="120" filled="true"></circle>
+      <circle x="104" y="74" marked="true" color="-1920102913" diameter="152" filled="true"></circle>
+    </shape>
+    <shape name="triangle" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="30"></point>
+        <point x="15" y="255"></point>
+        <point x="285" y="255"></point>
+      </polygon>
+    </shape>
+    <shape name="triangle 2" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="30"></point>
+        <point x="15" y="255"></point>
+        <point x="285" y="255"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="151" y="99"></point>
+        <point x="225" y="223"></point>
+        <point x="75" y="224"></point>
+      </polygon>
+    </shape>
+    <shape name="truck" rotatable="false" editableColorIndex="0">
+      <rectangle endX="195" startY="45" marked="true" color="-1920102913" endY="187" startX="4" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="296" y="193"></point>
+        <point x="296" y="150"></point>
+        <point x="259" y="134"></point>
+        <point x="244" y="104"></point>
+        <point x="208" y="104"></point>
+        <point x="207" y="194"></point>
+      </polygon>
+      <rectangle endX="195" startY="60" marked="false" color="-1" endY="105" startX="195" filled="true"></rectangle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="238" y="112"></point>
+        <point x="252" y="141"></point>
+        <point x="219" y="141"></point>
+        <point x="218" y="112"></point>
+      </polygon>
+      <circle x="234" y="174" marked="false" color="255" diameter="42" filled="true"></circle>
+      <rectangle endX="214" startY="185" marked="true" color="-1920102913" endY="194" startX="181" filled="true"></rectangle>
+      <circle x="144" y="174" marked="false" color="255" diameter="42" filled="true"></circle>
+      <circle x="24" y="174" marked="false" color="255" diameter="42" filled="true"></circle>
+      <circle x="24" y="174" marked="true" color="-1920102913" diameter="42" filled="false"></circle>
+      <circle x="144" y="174" marked="true" color="-1920102913" diameter="42" filled="false"></circle>
+      <circle x="234" y="174" marked="true" color="-1920102913" diameter="42" filled="false"></circle>
+    </shape>
+    <shape name="turtle" rotatable="true" editableColorIndex="0">
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="215" y="204"></point>
+        <point x="240" y="233"></point>
+        <point x="246" y="254"></point>
+        <point x="228" y="266"></point>
+        <point x="215" y="252"></point>
+        <point x="193" y="210"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="195" y="90"></point>
+        <point x="225" y="75"></point>
+        <point x="245" y="75"></point>
+        <point x="260" y="89"></point>
+        <point x="269" y="108"></point>
+        <point x="261" y="124"></point>
+        <point x="240" y="105"></point>
+        <point x="225" y="105"></point>
+        <point x="210" y="105"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="105" y="90"></point>
+        <point x="75" y="75"></point>
+        <point x="55" y="75"></point>
+        <point x="40" y="89"></point>
+        <point x="31" y="108"></point>
+        <point x="39" y="124"></point>
+        <point x="60" y="105"></point>
+        <point x="75" y="105"></point>
+        <point x="90" y="105"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="132" y="85"></point>
+        <point x="134" y="64"></point>
+        <point x="107" y="51"></point>
+        <point x="108" y="17"></point>
+        <point x="150" y="2"></point>
+        <point x="192" y="18"></point>
+        <point x="192" y="52"></point>
+        <point x="169" y="65"></point>
+        <point x="172" y="87"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="85" y="204"></point>
+        <point x="60" y="233"></point>
+        <point x="54" y="254"></point>
+        <point x="72" y="266"></point>
+        <point x="85" y="252"></point>
+        <point x="107" y="210"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="209" y="101"></point>
+        <point x="224" y="135"></point>
+        <point x="220" y="225"></point>
+        <point x="175" y="261"></point>
+        <point x="128" y="261"></point>
+        <point x="81" y="224"></point>
+        <point x="74" y="135"></point>
+        <point x="88" y="99"></point>
+      </polygon>
+    </shape>
+    <shape name="wheel" rotatable="false" editableColorIndex="0">
+      <circle x="3" y="3" marked="true" color="-1920102913" diameter="294" filled="true"></circle>
+      <circle x="30" y="30" marked="false" color="255" diameter="240" filled="true"></circle>
+      <line endX="150" startY="285" marked="true" color="-1920102913" endY="15" startX="150"></line>
+      <line endX="285" startY="150" marked="true" color="-1920102913" endY="150" startX="15"></line>
+      <circle x="120" y="120" marked="true" color="-1920102913" diameter="60" filled="true"></circle>
+      <line endX="79" startY="40" marked="true" color="-1920102913" endY="269" startX="216"></line>
+      <line endX="269" startY="84" marked="true" color="-1920102913" endY="221" startX="40"></line>
+      <line endX="269" startY="216" marked="true" color="-1920102913" endY="79" startX="40"></line>
+      <line endX="221" startY="40" marked="true" color="-1920102913" endY="269" startX="84"></line>
+    </shape>
+    <shape name="x" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="270" y="75"></point>
+        <point x="225" y="30"></point>
+        <point x="30" y="225"></point>
+        <point x="75" y="270"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="30" y="75"></point>
+        <point x="75" y="30"></point>
+        <point x="270" y="225"></point>
+        <point x="225" y="270"></point>
+      </polygon>
+    </shape>
+  </turtleShapes>
+  <linkShapes>
+    <shape name="default" curviness="0.0">
+      <lines>
+        <line x="-0.2" visible="false">
+          <dash value="0.0"></dash>
+          <dash value="1.0"></dash>
+        </line>
+        <line x="0.0" visible="true">
+          <dash value="1.0"></dash>
+          <dash value="0.0"></dash>
+        </line>
+        <line x="0.2" visible="false">
+          <dash value="0.0"></dash>
+          <dash value="1.0"></dash>
+        </line>
+      </lines>
+      <indicator>
+        <shape name="link direction" rotatable="true" editableColorIndex="0">
+          <line endX="90" startY="150" marked="true" color="-1920102913" endY="180" startX="150"></line>
+          <line endX="210" startY="150" marked="true" color="-1920102913" endY="180" startX="150"></line>
+        </shape>
+      </indicator>
+    </shape>
+  </linkShapes>
+  <previewCommands>setup repeat 24 [ go ]</previewCommands>
+  <citation year1="2007" cite="Rand, W., Wilensky, U."></citation>
+  <experiments>
+    <experiment name="info-memory-pilot" repetitions="5" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="480">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode">
+          <value value="&quot;none&quot;"/>
+          <value value="&quot;live&quot;"/>
+          <value value="&quot;delayed&quot;"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size">
+          <value value="1"/>
+          <value value="5"/>
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies">
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents">
+          <value value="100"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="capacity">
+          <value value="38"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="delay">
+          <value value="2"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days">
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?">
+          <value value="false"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?">
+          <value value="true"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?">
+          <value value="false"/>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="info-memory-grid" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="480">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode">
+          <value value="&quot;none&quot;"/>
+          <value value="&quot;live&quot;"/>
+          <value value="&quot;delayed&quot;"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size">
+          <value value="1"/>
+          <value value="5"/>
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies">
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents">
+          <value value="100"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="capacity">
+          <value value="38"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="delay">
+          <value value="2"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days">
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?">
+          <value value="false"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?">
+          <value value="true"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?">
+          <value value="false"/>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="24">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode">
+          <value value="&quot;none&quot;"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size">
+          <value value="5"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies">
+          <value value="10"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents">
+          <value value="100"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="capacity">
+          <value value="38"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="delay">
+          <value value="2"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days">
+          <value value="0"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?">
+          <value value="false"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?">
+          <value value="true"/>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?">
+          <value value="false"/>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+  </experiments>
+</model>

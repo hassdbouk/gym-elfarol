@@ -1,0 +1,39 @@
+2026-10-27 20:26:23,123 INFO NetLogo: C:\Program Files\NetLogo 7.0.4\NetLogo_Console.exe
+2026-10-27 20:26:23,124 INFO Experiment: smoke-one-day  threads=1
+2026-10-27 20:26:23,124 INFO Command: C:\Program Files\NetLogo 7.0.4\NetLogo_Console.exe --headless --model C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\GymElFarol.nlogo --setup-file C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\experiments.xml --experiment smoke-one-day --table C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\smoke.csv --threads 1
+2026-10-27 20:26:28,825 INFO NetLogo stderr:
+There is already a primitive reporter called DX at position 10706 in 
+Child process exited with code 1
+2026-10-27 20:26:59,113 INFO NetLogo: C:\Program Files\NetLogo 7.0.4\NetLogo_Console.exe
+2026-10-27 20:26:59,113 INFO Experiment: smoke-one-day  threads=1
+2026-10-27 20:26:59,114 INFO Command: C:\Program Files\NetLogo 7.0.4\NetLogo_Console.exe --headless --model C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\GymElFarol.nlogo --setup-file C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\experiments.xml --experiment smoke-one-day --table C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\smoke.csv --threads 1
+2026-10-27 20:27:00,662 INFO NetLogo stderr:
+REPORT must be immediately inside a TO-REPORT. at position 9671 in 
+Child process exited with code 1
+2026-10-27 20:27:24,100 INFO NetLogo: C:\Program Files\NetLogo 7.0.4\NetLogo_Console.exe
+2026-10-27 20:27:24,101 INFO Experiment: smoke-one-day  threads=1
+2026-10-27 20:27:24,101 INFO Command: C:\Program Files\NetLogo 7.0.4\NetLogo_Console.exe --headless --model C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\GymElFarol.nlogo --setup-file C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\experiments.xml --experiment smoke-one-day --table C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\smoke.csv --threads 1
+2026-10-27 20:27:26,473 INFO NetLogo stderr:
+java.lang.Exception: The specified model does not contain the experiment "smoke-one-day".
+Child process exited with code 1
+2026-10-27 20:28:30,705 INFO NetLogo home: C:\Program Files\NetLogo 7.0.4
+2026-10-27 20:28:30,705 INFO Experiment: smoke-one-day  threads=1
+2026-10-27 20:28:30,705 INFO Command: C:\Program Files\NetLogo 7.0.4\runtime\bin\java.exe -XX:MaxRAMPercentage=50 -Dfile.encoding=UTF-8 -Dnetlogo.docs.dir=C:\Program Files\NetLogo 7.0.4 -Dnetlogo.models.dir=C:\Program Files\NetLogo 7.0.4\models -Dnetlogo.extensions.dir=C:\Program Files\NetLogo 7.0.4\extensions --add-exports=java.base/java.lang=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.desktop/sun.java2d=ALL-UNNAMED -classpath C:\Program Files\NetLogo 7.0.4\app\netlogo-7.0.4.jar org.nlogo.headless.Main --model C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\GymElFarol.nlogo --setup-file C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\experiments.xml --experiment smoke-one-day --table C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\smoke.csv --threads 1
+2026-10-27 20:28:32,778 INFO NetLogo stderr:
+java.lang.Exception: The specified model does not contain the experiment "smoke-one-day".
+2026-10-27 20:29:39,689 INFO NetLogo home: C:\Program Files\NetLogo 7.0.4
+2026-10-27 20:29:39,689 INFO Experiment: smoke-one-day  threads=1
+2026-10-27 20:29:39,689 INFO Command: C:\Program Files\NetLogo 7.0.4\runtime\bin\java.exe -XX:MaxRAMPercentage=50 -Dfile.encoding=UTF-8 -Dnetlogo.docs.dir=C:\Program Files\NetLogo 7.0.4 -Dnetlogo.models.dir=C:\Program Files\NetLogo 7.0.4\models -Dnetlogo.extensions.dir=C:\Program Files\NetLogo 7.0.4\extensions --add-exports=java.base/java.lang=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.desktop/sun.java2d=ALL-UNNAMED -classpath C:\Program Files\NetLogo 7.0.4\app\netlogo-7.0.4.jar org.nlogo.headless.Main --model C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\GymElFarol.nlogox --setup-file C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\experiments.xml --experiment smoke-one-day --table C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\smoke.csv --threads 1
+2026-10-27 20:29:41,851 INFO NetLogo stderr:
+java.lang.Exception: The specified model does not contain the experiment "smoke-one-day".
+2026-10-27 20:30:34,159 INFO NetLogo home: C:\Program Files\NetLogo 7.0.4
+2026-10-27 20:30:34,159 INFO Staged model dir: C:\Temp\gym-elfarol-bs
+2026-10-27 20:30:34,159 INFO Experiment: info-memory-pilot  threads=12
+2026-10-27 20:30:34,159 INFO Command: C:\Program Files\NetLogo 7.0.4\runtime\bin\java.exe -XX:MaxRAMPercentage=50 -Dfile.encoding=UTF-8 -Dnetlogo.docs.dir=C:\Program Files\NetLogo 7.0.4 -Dnetlogo.models.dir=C:\Program Files\NetLogo 7.0.4\models -Dnetlogo.extensions.dir=C:\Program Files\NetLogo 7.0.4\extensions --add-exports=java.base/java.lang=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.desktop/sun.java2d=ALL-UNNAMED -classpath C:\Program Files\NetLogo 7.0.4\app\netlogo-7.0.4.jar org.nlogo.headless.Main --model C:\Temp\gym-elfarol-bs\GymElFarol.nlogox --setup-file C:\Temp\gym-elfarol-bs\experiments.xml --experiment info-memory-pilot --table C:\Temp\gym-elfarol-bs\pilot.csv --threads 12
+2026-10-27 20:30:36,423 INFO NetLogo stderr:
+java.lang.Exception: The specified model does not contain the experiment "info-memory-pilot".
+2026-10-27 20:30:47,693 INFO NetLogo home: C:\Program Files\NetLogo 7.0.4
+2026-10-27 20:30:47,693 INFO Staged model dir: C:\Temp\gym-elfarol-bs
+2026-10-27 20:30:47,694 INFO Experiment: info-memory-pilot  threads=12
+2026-10-27 20:30:47,694 INFO Command: C:\Program Files\NetLogo 7.0.4\runtime\bin\java.exe -XX:MaxRAMPercentage=50 -Dfile.encoding=UTF-8 -Dnetlogo.docs.dir=C:\Program Files\NetLogo 7.0.4 -Dnetlogo.models.dir=C:\Program Files\NetLogo 7.0.4\models -Dnetlogo.extensions.dir=C:\Program Files\NetLogo 7.0.4\extensions --add-exports=java.base/java.lang=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.desktop/sun.java2d=ALL-UNNAMED -classpath C:\Program Files\NetLogo 7.0.4\app\netlogo-7.0.4.jar org.nlogo.headless.Main --model C:\Temp\gym-elfarol-bs\GymElFarol.nlogox --experiment info-memory-pilot --table C:\Temp\gym-elfarol-bs\pilot.csv --threads 12
+2026-10-27 20:31:10,768 INFO Finished info-memory-pilot in 23.1 s -> C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\pilot.csv (7772 bytes)

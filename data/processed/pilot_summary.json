@@ -1,0 +1,63 @@
+{
+  "decision": "keep-slots",
+  "keep_slot_model": true,
+  "decided_on": "2026-10-27",
+  "deadline": "2026-11-02",
+  "rationale": "The 12-slot model completed a 3x3 x 5-seed BehaviorSpace pilot with finite, non-degenerate reporters, and the timed run scales to a 30-seed grid inside the week-3 window. Keep the slot model; do not fall back to single-slot El Farol.",
+  "complete": true,
+  "degenerate": false,
+  "too_slow": false,
+  "n_runs": 45,
+  "expected_runs": 45,
+  "elapsed_seconds": 23.066,
+  "seconds_per_run": 0.513,
+  "estimated_full_grid_seconds": 138.4,
+  "estimated_full_grid_minutes": 2.3,
+  "flags": [],
+  "effects": {
+    "pct-slots-over-capacity": {
+      "delayed": 86.6296,
+      "live": 89.1296,
+      "none": 77.1296,
+      "live_minus_none": 12.0,
+      "delayed_minus_none": 9.5
+    },
+    "peak-occupancy": {
+      "delayed": 66.0,
+      "live": 62.4667,
+      "none": 69.1333,
+      "live_minus_none": -6.6667,
+      "delayed_minus_none": -3.1333
+    },
+    "occupancy-variance": {
+      "delayed": 147.147,
+      "live": 138.1829,
+      "none": 273.6623,
+      "live_minus_none": -135.4794,
+      "delayed_minus_none": -126.5153
+    },
+    "lag1-autocorr": {
+      "delayed": 0.7636,
+      "live": 0.7596,
+      "none": 0.8187,
+      "live_minus_none": -0.059,
+      "delayed_minus_none": -0.0551
+    },
+    "good-visit-rate": {
+      "delayed": 0.0672,
+      "live": 0.0529,
+      "none": 0.1034,
+      "live_minus_none": -0.0506,
+      "delayed_minus_none": -0.0362
+    },
+    "skip-rate": {
+      "delayed": 0.4783,
+      "live": 0.5008,
+      "none": 0.4958,
+      "live_minus_none": 0.0049,
+      "delayed_minus_none": -0.0176
+    }
+  },
+  "source_table": "C:\\Users\\hass\\Documents\\notes workplace\\Multi Agent\\Project\\gym-elfarol\\data\\processed\\pilot.csv",
+  "grid_csv": "C:\\Users\\hass\\Documents\\notes workplace\\Multi Agent\\Project\\gym-elfarol\\data\\processed\\pilot_grid.csv"
+}

@@ -1,0 +1,13 @@
+{
+  "n": 30,
+  "seed": 20261027,
+  "source": "data/processed/ocr_spotcheck.csv",
+  "core_areas": ["3WR", "4WR", "CM"],
+  "result": "30/30 core 3WR/4WR/CM counts match the occupancy cards",
+  "notes": [
+    "Tesseract often reads '4th' as 'Ath'; the parser maps that to 4WR.",
+    "Spin/WO zeros are sometimes OCRed as the letter O and dropped. Not used as model inputs.",
+    "Three source graphics have implausible printed numbers (4WR 389, CM 203, WO 110). Those are staff typos on the card, not parse errors; cleaning can flag them.",
+    "The 3 unparsed posts are announcements (We've moved; closed until Saturday; power restored), not occupancy cards."
+  ]
+}

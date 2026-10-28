@@ -1,0 +1,40 @@
+{
+  "n_posts": 1174,
+  "n_parsed_posts": 1171,
+  "n_unparsed_posts": 3,
+  "unparsed_share": 0.0026,
+  "n_rows": 8100,
+  "text_caption_posts": 321,
+  "ocr_needed": true,
+  "parse_method_counts": {
+    "tweet_text": 321,
+    "ocr_tesseract": 850,
+    "unparsed": 3
+  },
+  "area_post_counts": {
+    "3WR": 1171,
+    "4WR": 1155,
+    "CM": 1167,
+    "SPIN": 1084,
+    "WO": 1064,
+    "BASKETBALL": 563,
+    "BADMINTON": 486,
+    "POOL": 288,
+    "SQUASH": 537,
+    "FUTSAL": 49,
+    "VOLLEYBALL": 337,
+    "PICKLEBALL": 199
+  },
+  "oldest_local": "2025-09-01T07:04:41-04:00",
+  "newest_local": "2026-10-27T19:02:10-04:00",
+  "csv": "data/processed/occupancy_long.csv",
+  "unparsed": "data/processed/unparsed_posts.jsonl",
+  "spotcheck": "data/processed/ocr_spotcheck.csv",
+  "spotcheck_n": 30,
+  "tesseract_available": true,
+  "manual_spotcheck": {
+    "n": 30,
+    "core_3WR_4WR_CM": "30/30 match the cards",
+    "review_file": "data/processed/ocr_spotcheck_review.json"
+  }
+}

@@ -1,0 +1,8 @@
+"BehaviorSpace results (NetLogo 7.0.4)","Table version 2.0"
+"C:\Temp\gym-bs\GymElFarol.nlogox"
+"smoke-one-day"
+"10/27/2026 20:30:01:532 -0400"
+"min-pxcor","max-pxcor","min-pycor","max-pycor"
+"-17","17","-17","17"
+"[run number]","info-mode","memory-size","number-strategies","n-agents","capacity","delay","burn-in-days","must-go?","seed-from-data?","visualize?","[step]","peak-occupancy","pct-slots-over-capacity","occupancy-variance","good-visit-rate","skip-rate","lag1-autocorr"
+"1","none","5","10","100","38","2","0","false","true","false","24","97","100","174.8888888888889","0","0.11","0.724447046676983"

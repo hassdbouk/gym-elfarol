@@ -1,0 +1,152 @@
+2026-10-27 19:35:38,021 ERROR self-test failed for '3WR48\n4WR11\nCM13\nSPIN11\nWO1'
+  expected {'3WR': 48, '4WR': 11, 'CM': 13, 'SPIN': 11, 'WO': 1}
+  got      {'3WR': 48, '4WR': 11}
+2026-10-27 19:35:38,023 ERROR 1 self-test(s) failed
+2026-10-27 19:36:06,487 INFO All self-tests passed
+2026-10-27 19:43:09,515 INFO All self-tests passed
+2026-10-27 19:43:09,725 INFO Loaded 1174 posts from C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\raw\x\westernweightrm_posts.jsonl
+2026-10-27 19:43:09,732 INFO Text occupancy captions: 321/1174 (27.3%). OCR fallback threshold is 10% unparsed-from-text.
+2026-10-27 19:43:09,734 INFO More than 10%% of posts lack text numbers; running OCR fallback
+2026-10-27 19:43:09,869 INFO Tesseract at C:\Users\hass\AppData\Local\Tesseract-OCR\tesseract.exe
+2026-10-27 19:43:09,869 INFO OCR cache entries: 0
+2026-10-27 19:43:09,871 INFO Parsed 200/1174 posts; rows so far 997
+2026-10-27 19:43:18,825 INFO OCR progress: 25 image posts
+2026-10-27 19:43:27,837 INFO OCR progress: 50 image posts
+2026-10-27 19:43:36,852 INFO OCR progress: 75 image posts
+2026-10-27 19:43:37,912 INFO Parsed 400/1174 posts; rows so far 2173
+2026-10-27 19:43:46,128 INFO OCR progress: 100 image posts
+2026-10-27 19:43:55,968 INFO OCR progress: 125 image posts
+2026-10-27 19:44:05,222 INFO OCR progress: 150 image posts
+2026-10-27 19:44:14,928 INFO OCR progress: 175 image posts
+2026-10-27 19:44:25,916 INFO OCR progress: 200 image posts
+2026-10-27 19:44:36,949 INFO OCR progress: 225 image posts
+2026-10-27 19:44:57,321 INFO OCR progress: 250 image posts
+2026-10-27 19:45:24,802 INFO OCR progress: 275 image posts
+2026-10-27 19:45:28,682 INFO Parsed 600/1174 posts; rows so far 3537
+2026-10-27 19:45:39,968 INFO OCR progress: 300 image posts
+2026-10-27 19:45:50,943 INFO OCR progress: 325 image posts
+2026-10-27 19:46:02,213 INFO OCR progress: 350 image posts
+2026-10-27 19:46:14,020 INFO OCR progress: 375 image posts
+2026-10-27 19:46:24,146 INFO OCR progress: 400 image posts
+2026-10-27 19:46:33,930 INFO OCR progress: 425 image posts
+2026-10-27 19:46:44,138 INFO OCR progress: 450 image posts
+2026-10-27 19:46:56,264 INFO OCR progress: 475 image posts
+2026-10-27 19:46:57,032 INFO Parsed 800/1174 posts; rows so far 5044
+2026-10-27 19:47:06,628 INFO OCR progress: 500 image posts
+2026-10-27 19:47:19,833 INFO OCR progress: 525 image posts
+2026-10-27 19:47:31,403 INFO OCR progress: 550 image posts
+2026-10-27 19:47:42,698 INFO OCR progress: 575 image posts
+2026-10-27 19:47:54,526 INFO OCR progress: 600 image posts
+2026-10-27 19:48:06,328 INFO OCR progress: 625 image posts
+2026-10-27 19:48:17,440 INFO OCR progress: 650 image posts
+2026-10-27 19:48:28,934 INFO OCR progress: 675 image posts
+2026-10-27 19:48:29,452 INFO Parsed 1000/1174 posts; rows so far 6494
+2026-10-27 19:48:40,443 INFO OCR progress: 700 image posts
+2026-10-27 19:48:49,460 INFO OCR progress: 725 image posts
+2026-10-27 19:48:58,774 INFO OCR progress: 750 image posts
+2026-10-27 19:49:08,191 INFO OCR progress: 775 image posts
+2026-10-27 19:49:17,827 INFO OCR progress: 800 image posts
+2026-10-27 19:49:27,203 INFO OCR progress: 825 image posts
+2026-10-27 19:49:36,589 INFO OCR progress: 850 image posts
+2026-10-27 19:49:36,624 INFO Wrote 7663 rows to C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\occupancy_long.csv
+2026-10-27 19:49:36,624 INFO Unparsed posts: 3 (C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\unparsed_posts.jsonl)
+2026-10-27 19:49:36,625 INFO Spot-check sample: 30 rows -> C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\ocr_spotcheck.csv
+2026-10-27 19:49:36,625 INFO Summary: {"tweet_text": 321, "ocr_tesseract": 827, "unparsed": 3, "ocr_rapidocr": 23}
+2026-10-27 19:50:35,288 INFO All self-tests passed
+2026-10-27 19:50:35,466 INFO Loaded 1174 posts from C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\raw\x\westernweightrm_posts.jsonl
+2026-10-27 19:50:35,473 INFO Text occupancy captions: 321/1174 (27.3%). OCR fallback threshold is 10% unparsed-from-text.
+2026-10-27 19:50:35,473 INFO More than 10%% of posts lack text numbers; running OCR fallback
+2026-10-27 19:50:35,591 INFO Tesseract at C:\Users\hass\AppData\Local\Tesseract-OCR\tesseract.exe
+2026-10-27 19:50:35,605 INFO OCR cache entries: 877
+2026-10-27 19:50:35,607 INFO Parsed 200/1174 posts; rows so far 997
+2026-10-27 19:50:35,618 INFO OCR progress: 25 image posts
+2026-10-27 19:50:35,627 INFO OCR progress: 50 image posts
+2026-10-27 19:50:35,636 INFO OCR progress: 75 image posts
+2026-10-27 19:50:35,637 INFO Parsed 400/1174 posts; rows so far 2173
+2026-10-27 19:50:35,645 INFO OCR progress: 100 image posts
+2026-10-27 19:50:35,654 INFO OCR progress: 125 image posts
+2026-10-27 19:50:35,662 INFO OCR progress: 150 image posts
+2026-10-27 19:50:35,670 INFO OCR progress: 175 image posts
+2026-10-27 19:50:35,679 INFO OCR progress: 200 image posts
+2026-10-27 19:50:35,687 INFO OCR progress: 225 image posts
+2026-10-27 19:50:35,695 INFO OCR progress: 250 image posts
+2026-10-27 19:50:35,705 INFO OCR progress: 275 image posts
+2026-10-27 19:50:35,706 INFO Parsed 600/1174 posts; rows so far 3591
+2026-10-27 19:50:35,714 INFO OCR progress: 300 image posts
+2026-10-27 19:50:35,725 INFO OCR progress: 325 image posts
+2026-10-27 19:50:35,735 INFO OCR progress: 350 image posts
+2026-10-27 19:50:35,744 INFO OCR progress: 375 image posts
+2026-10-27 19:50:35,753 INFO OCR progress: 400 image posts
+2026-10-27 19:50:35,761 INFO OCR progress: 425 image posts
+2026-10-27 19:50:35,770 INFO OCR progress: 450 image posts
+2026-10-27 19:50:35,779 INFO OCR progress: 475 image posts
+2026-10-27 19:50:35,780 INFO Parsed 800/1174 posts; rows so far 5234
+2026-10-27 19:50:35,788 INFO OCR progress: 500 image posts
+2026-10-27 19:50:35,797 INFO OCR progress: 525 image posts
+2026-10-27 19:50:35,806 INFO OCR progress: 550 image posts
+2026-10-27 19:50:35,817 INFO OCR progress: 575 image posts
+2026-10-27 19:50:35,827 INFO OCR progress: 600 image posts
+2026-10-27 19:50:35,837 INFO OCR progress: 625 image posts
+2026-10-27 19:50:35,847 INFO OCR progress: 650 image posts
+2026-10-27 19:50:35,856 INFO OCR progress: 675 image posts
+2026-10-27 19:50:35,857 INFO Parsed 1000/1174 posts; rows so far 6840
+2026-10-27 19:50:35,865 INFO OCR progress: 700 image posts
+2026-10-27 19:50:35,876 INFO OCR progress: 725 image posts
+2026-10-27 19:50:35,886 INFO OCR progress: 750 image posts
+2026-10-27 19:50:35,896 INFO OCR progress: 775 image posts
+2026-10-27 19:50:35,906 INFO OCR progress: 800 image posts
+2026-10-27 19:50:35,919 INFO OCR progress: 825 image posts
+2026-10-27 19:50:35,930 INFO OCR progress: 850 image posts
+2026-10-27 19:50:35,964 INFO Wrote 8148 rows to C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\occupancy_long.csv
+2026-10-27 19:50:35,964 INFO Unparsed posts: 3 (C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\unparsed_posts.jsonl)
+2026-10-27 19:50:35,964 INFO Spot-check sample: 30 rows -> C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\ocr_spotcheck.csv
+2026-10-27 19:50:35,964 INFO Summary: {"tweet_text": 321, "ocr_tesseract": 850, "unparsed": 3}
+2026-10-27 19:52:33,730 INFO All self-tests passed
+2026-10-27 19:52:33,910 INFO Loaded 1174 posts from C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\raw\x\westernweightrm_posts.jsonl
+2026-10-27 19:52:33,919 INFO Text occupancy captions: 321/1174 (27.3%). OCR fallback threshold is 10% unparsed-from-text.
+2026-10-27 19:52:33,919 INFO More than 10%% of posts lack text numbers; running OCR fallback
+2026-10-27 19:52:34,034 INFO Tesseract at C:\Users\hass\AppData\Local\Tesseract-OCR\tesseract.exe
+2026-10-27 19:52:34,037 INFO OCR cache entries: 877
+2026-10-27 19:52:34,039 INFO Parsed 200/1174 posts; rows so far 997
+2026-10-27 19:52:34,050 INFO OCR progress: 25 image posts
+2026-10-27 19:52:34,060 INFO OCR progress: 50 image posts
+2026-10-27 19:52:34,068 INFO OCR progress: 75 image posts
+2026-10-27 19:52:34,069 INFO Parsed 400/1174 posts; rows so far 2133
+2026-10-27 19:52:34,077 INFO OCR progress: 100 image posts
+2026-10-27 19:52:34,086 INFO OCR progress: 125 image posts
+2026-10-27 19:52:34,095 INFO OCR progress: 150 image posts
+2026-10-27 19:52:34,109 INFO OCR progress: 175 image posts
+2026-10-27 19:52:34,120 INFO OCR progress: 200 image posts
+2026-10-27 19:52:34,129 INFO OCR progress: 225 image posts
+2026-10-27 19:52:34,138 INFO OCR progress: 250 image posts
+2026-10-27 19:52:34,147 INFO OCR progress: 275 image posts
+2026-10-27 19:52:34,149 INFO Parsed 600/1174 posts; rows so far 3550
+2026-10-27 19:52:34,157 INFO OCR progress: 300 image posts
+2026-10-27 19:52:34,166 INFO OCR progress: 325 image posts
+2026-10-27 19:52:34,175 INFO OCR progress: 350 image posts
+2026-10-27 19:52:34,184 INFO OCR progress: 375 image posts
+2026-10-27 19:52:34,193 INFO OCR progress: 400 image posts
+2026-10-27 19:52:34,202 INFO OCR progress: 425 image posts
+2026-10-27 19:52:34,211 INFO OCR progress: 450 image posts
+2026-10-27 19:52:34,223 INFO OCR progress: 475 image posts
+2026-10-27 19:52:34,224 INFO Parsed 800/1174 posts; rows so far 5191
+2026-10-27 19:52:34,232 INFO OCR progress: 500 image posts
+2026-10-27 19:52:34,242 INFO OCR progress: 525 image posts
+2026-10-27 19:52:34,251 INFO OCR progress: 550 image posts
+2026-10-27 19:52:34,261 INFO OCR progress: 575 image posts
+2026-10-27 19:52:34,270 INFO OCR progress: 600 image posts
+2026-10-27 19:52:34,279 INFO OCR progress: 625 image posts
+2026-10-27 19:52:34,288 INFO OCR progress: 650 image posts
+2026-10-27 19:52:34,297 INFO OCR progress: 675 image posts
+2026-10-27 19:52:34,297 INFO Parsed 1000/1174 posts; rows so far 6793
+2026-10-27 19:52:34,306 INFO OCR progress: 700 image posts
+2026-10-27 19:52:34,316 INFO OCR progress: 725 image posts
+2026-10-27 19:52:34,327 INFO OCR progress: 750 image posts
+2026-10-27 19:52:34,337 INFO OCR progress: 775 image posts
+2026-10-27 19:52:34,346 INFO OCR progress: 800 image posts
+2026-10-27 19:52:34,354 INFO OCR progress: 825 image posts
+2026-10-27 19:52:34,364 INFO OCR progress: 850 image posts
+2026-10-27 19:52:34,394 INFO Wrote 8100 rows to C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\occupancy_long.csv
+2026-10-27 19:52:34,394 INFO Unparsed posts: 3 (C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\unparsed_posts.jsonl)
+2026-10-27 19:52:34,394 INFO Spot-check sample: 30 rows -> C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\processed\ocr_spotcheck.csv
+2026-10-27 19:52:34,394 INFO Summary: {"tweet_text": 321, "ocr_tesseract": 850, "unparsed": 3}

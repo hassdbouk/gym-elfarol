@@ -1,0 +1,40 @@
+{
+  "timezone": "America/Toronto",
+  "fitness_areas": [
+    "3WR",
+    "4WR"
+  ],
+  "cm_included_in_fitness": false,
+  "cm_reason": "Fitness centre only = 3WR + 4WR (weight rooms). CM (cardio mezz) is stored on the panel but excluded from count_fitness.",
+  "slot_minutes": 30,
+  "raw_long_rows": 8100,
+  "live_rows": 40,
+  "area_filter": {
+    "rows_in": 8140,
+    "rows_kept_areas": 3505,
+    "rows_implausible_dropped": 2,
+    "implausible_examples": [
+      {
+        "timestamp_local": "2026-01-22T13:01:28-05:00",
+        "area": "CM",
+        "count": 203,
+        "parse_method": "ocr_tesseract"
+      },
+      {
+        "timestamp_local": "2026-03-11T18:05:06-04:00",
+        "area": "4WR",
+        "count": 389,
+        "parse_method": "ocr_tesseract"
+      }
+    ]
+  },
+  "n_open_slots": 11116,
+  "n_slots_with_fitness": 1104,
+  "coverage": 0.0993,
+  "date_start": "2025-09-01",
+  "date_end": "2026-10-27",
+  "n_open_dates": 396,
+  "weekday_share": 0.7746,
+  "reading_week_slots": 571,
+  "csv": "data/processed/occupancy_30min.csv"
+}

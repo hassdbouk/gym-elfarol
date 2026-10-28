@@ -1,0 +1,38 @@
+{
+  "scope": "Regular-term Monday-Thursday evenings 16:00-22:00, fitness = 3WR+4WR. Reading week, exams, holidays, weekends, and summer are excluded.",
+  "n_slots": 324,
+  "n_days": 81,
+  "hourly_mean_profile": {
+    "16:00": 180.27,
+    "17:00": 192.69,
+    "18:00": 182.58,
+    "19:00": 167.92,
+    "20:00": 159.68,
+    "21:00": 149.4
+  },
+  "slot_mean_profile": {
+    "16:00": 177.32,
+    "16:30": 193.88,
+    "17:00": 190.51,
+    "17:30": 198.56,
+    "18:00": 182.61,
+    "18:30": 182.46,
+    "19:00": 169.4,
+    "19:30": 163.56,
+    "20:00": 155.92,
+    "20:30": 170.38,
+    "21:00": 143.94,
+    "21:30": 166.27
+  },
+  "pct_slots_over_capacity": 4.63,
+  "capacity_used": 239,
+  "capacity_definition": "95th percentile of the same evening window",
+  "coefficient_of_variation": 0.2366,
+  "lag1_autocorr": {
+    "adjacent_slots": 0.7507,
+    "n_pairs": 62
+  },
+  "peak_hour": "17:00",
+  "mean_occupancy": 173.11,
+  "std_occupancy": 40.96
+}

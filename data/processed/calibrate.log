@@ -1,0 +1,10 @@
+2026-10-27 19:58:33,949 INFO All self-tests passed
+2026-10-27 19:58:35,644 INFO Calibration sample: 324 slots across 81 Mon-Thu evenings
+2026-10-27 19:58:35,669 INFO params.json: n_agents=100 capacity=38 (observed p95=239, peak=317)
+2026-10-27 19:58:35,669 INFO validation: % over capacity=4.63, CV=0.2366, lag1=0.1882
+2026-10-27 19:59:34,929 INFO All self-tests passed
+2026-10-27 19:59:36,298 INFO Calibration sample: 324 slots across 81 Mon-Thu evenings
+2026-10-27 19:59:36,323 INFO params.json: n_agents=100 capacity=38 (observed p95=239, peak=317)
+2026-10-27 19:59:36,323 INFO validation: % over capacity=4.63, CV=0.2366, lag1=0.7507
+2026-10-27 20:13:49,236 INFO All self-tests passed
+2026-10-27 20:13:49,878 INFO Wrote C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\seed_history.csv from C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\params.json

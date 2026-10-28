@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<experiments>
+  <!--
+    Gym El Farol BehaviorSpace experiments (NetLogo 7 XML).
+
+    Metrics are end-of-run summaries (runMetricsEveryStep=false). The model
+    discards the first burn-in-days (10) internally, then records the six
+    reporters. 40 simulated days = 480 ticks. Seed history comes from
+    seed_history.csv.
+
+    Same experiments are embedded in GymElFarol.nlogox. Headless runs that
+    file via analysis/run_pilot.py; --setup-file is not used (NetLogo 7.0.4
+    headless failed to load this XML as a setup-file).
+
+    python analysis/run_pilot.py --smoke
+    python analysis/run_pilot.py --experiment info-memory-pilot
+    python analysis/analyze_pilot.py
+  -->
+  <experiment name="info-memory-pilot" repetitions="5" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="480">
+    <setup>setup</setup>
+    <go>go</go>
+    <metrics>
+      <metric>peak-occupancy</metric>
+      <metric>pct-slots-over-capacity</metric>
+      <metric>occupancy-variance</metric>
+      <metric>good-visit-rate</metric>
+      <metric>skip-rate</metric>
+      <metric>lag1-autocorr</metric>
+    </metrics>
+    <constants>
+      <enumeratedValueSet variable="info-mode">
+        <value value="&quot;none&quot;"/>
+        <value value="&quot;live&quot;"/>
+        <value value="&quot;delayed&quot;"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="memory-size">
+        <value value="1"/>
+        <value value="5"/>
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="number-strategies">
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="n-agents">
+        <value value="100"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="capacity">
+        <value value="38"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="delay">
+        <value value="2"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="burn-in-days">
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="must-go?">
+        <value value="false"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="seed-from-data?">
+        <value value="true"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="visualize?">
+        <value value="false"/>
+      </enumeratedValueSet>
+    </constants>
+  </experiment>
+  <experiment name="info-memory-grid" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="480">
+    <setup>setup</setup>
+    <go>go</go>
+    <metrics>
+      <metric>peak-occupancy</metric>
+      <metric>pct-slots-over-capacity</metric>
+      <metric>occupancy-variance</metric>
+      <metric>good-visit-rate</metric>
+      <metric>skip-rate</metric>
+      <metric>lag1-autocorr</metric>
+    </metrics>
+    <constants>
+      <enumeratedValueSet variable="info-mode">
+        <value value="&quot;none&quot;"/>
+        <value value="&quot;live&quot;"/>
+        <value value="&quot;delayed&quot;"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="memory-size">
+        <value value="1"/>
+        <value value="5"/>
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="number-strategies">
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="n-agents">
+        <value value="100"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="capacity">
+        <value value="38"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="delay">
+        <value value="2"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="burn-in-days">
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="must-go?">
+        <value value="false"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="seed-from-data?">
+        <value value="true"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="visualize?">
+        <value value="false"/>
+      </enumeratedValueSet>
+    </constants>
+  </experiment>
+  <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="24">
+    <setup>setup</setup>
+    <go>go</go>
+    <metrics>
+      <metric>peak-occupancy</metric>
+      <metric>pct-slots-over-capacity</metric>
+      <metric>occupancy-variance</metric>
+      <metric>good-visit-rate</metric>
+      <metric>skip-rate</metric>
+      <metric>lag1-autocorr</metric>
+    </metrics>
+    <constants>
+      <enumeratedValueSet variable="info-mode">
+        <value value="&quot;none&quot;"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="memory-size">
+        <value value="5"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="number-strategies">
+        <value value="10"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="n-agents">
+        <value value="100"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="capacity">
+        <value value="38"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="delay">
+        <value value="2"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="burn-in-days">
+        <value value="0"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="must-go?">
+        <value value="false"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="seed-from-data?">
+        <value value="true"/>
+      </enumeratedValueSet>
+      <enumeratedValueSet variable="visualize?">
+        <value value="false"/>
+      </enumeratedValueSet>
+    </constants>
+  </experiment>
+</experiments>

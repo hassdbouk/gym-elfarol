@@ -1,0 +1,12 @@
+{
+  "experiment": "info-memory-pilot",
+  "model": "C:\\Users\\hass\\Documents\\notes workplace\\Multi Agent\\Project\\gym-elfarol\\netlogo\\GymElFarol.nlogox",
+  "setup_file": "C:\\Users\\hass\\Documents\\notes workplace\\Multi Agent\\Project\\gym-elfarol\\netlogo\\experiments.xml",
+  "table": "C:\\Users\\hass\\Documents\\notes workplace\\Multi Agent\\Project\\gym-elfarol\\data\\processed\\pilot.csv",
+  "netlogo": "C:\\Program Files\\NetLogo 7.0.4",
+  "threads": 12,
+  "started_utc": "2026-10-28T00:30:47.694096+00:00",
+  "elapsed_seconds": 23.066,
+  "returncode": 0,
+  "table_bytes": 7772
+}

@@ -1,0 +1,13 @@
+# Live poller. stdlib covers the Tagembed JSON request; these are for
+# America/Toronto timestamps (Windows) and OCR of the occupancy card image.
+tzdata
+pillow
+rapidocr-onnxruntime
+pytesseract
+
+# Historical X scrape (session cookies in scraper/cookies.json).
+# Upstream twikit 2.3.3 cannot parse X's 2026 webpack ondemand.s.js
+# ("Couldn't get KEY_BYTE indices"). twifork is a drop-in fork:
+# `from twikit import Client` still works.
+twifork
+
