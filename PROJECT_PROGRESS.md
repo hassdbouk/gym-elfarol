@@ -97,9 +97,9 @@ The early pilot suggests that live information may lower the highest attendance 
 5. Create the final graphs and statistical summaries.
 6. Finish the formal-model report and later the final project report. A formal-report document already exists, but its completion and submission status should be confirmed by the group.
 
-## Short explanation for the group or TA
+## Summary of Progress
 
-> We collected Western gym attendance posts and built a pipeline that can read both text posts and image cards. It successfully parsed 1,171 posts and produced 8,100 occupancy records. We cleaned the data and used it to calibrate a NetLogo version of the El Farol model with twelve half-hour gym time slots. The model compares no information, live information, and delayed information. A 45-run pilot completed successfully, so the model is ready for the full experiment. Our next steps are confirming the official gym capacity, running the 30-repetition experiment, validating the results against the real data, and completing the reports.
+> We collected Western gym attendance posts and built a pipeline that can read both text posts and image cards. It successfully parsed 1,171 posts and produced 8,100 occupancy records. We cleaned the data and used it to calibrate a NetLogo version of the El Farol model with twelve half-hour gym time slots. The model compares no information, live information, and delayed information. A 45-run pilot completed successfully, so the model is ready for the full experiment. Our next steps running the 30-repetition experiment, validating the results against the real data, and completing the reports.
 
 ## Main project files
 
