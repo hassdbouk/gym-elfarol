@@ -7,7 +7,7 @@ extensions [ csv ]
 ;; Strategy machinery (random-strategy, predict-attendance, update-strategies)
 ;; is copied unchanged from IABM chapter 3 El Farol (Rand & Wilensky 2007).
 ;; Decision rule, information, and memory are the gym extension:
-;;   each tick = one 30-min evening slot (12 slots = one weekday, 16:00-22:00);
+;;   each tick = one 30-min slot (31 slots = one weekday, 06:30-22:00);
 ;;   each agent wants one workout per day and chooses a slot or skips;
 ;;   history is kept per slot, in days; info-mode adds intra-day counts.
 
@@ -18,8 +18,8 @@ globals [
   today-attendance      ;; occupancies already observed today
   current-slot          ;; 0 .. n-slots - 1
   current-day           ;; 1-based day counter
-  n-slots               ;; evening slots in a day (12)
-  slot-labels           ;; ["16:00" "16:30" ... "21:30"]
+  n-slots               ;; slots in a day (31)
+  slot-labels           ;; ["06:30" "07:00" ... "21:30"]
   seed-means            ;; list of per-slot series used to seed memory
   home-patches
   gym-patches
@@ -50,9 +50,8 @@ turtles-own [
 to setup
   clear-all
   set-default-shape turtles "person"
-  set n-slots 12
-  set slot-labels [ "16:00" "16:30" "17:00" "17:30" "18:00" "18:30"
-                    "19:00" "19:30" "20:00" "20:30" "21:00" "21:30" ]
+  set n-slots 31
+  set slot-labels n-values n-slots [ i -> slot-label-at i ]
   set current-slot 0
   set current-day 0
   set attendance 0
@@ -115,7 +114,7 @@ to go
   ;; unchanged strategy procedures can see it
   set history item current-slot slot-histories
 
-  ask turtles with [ not decided? ] [
+  ask turtles with [ not decided? and willing-to-go? ] [
     update-strategies
     set prediction predict-attendance best-strategy sublist history 0 memory-size
     set prediction apply-info-signal prediction
@@ -188,6 +187,13 @@ to start-new-day
   ]
 end
 
+;; PREFERENCE HOOK (turtle context): report false to make this agent skip the
+;; current slot (it stays undecided and is reconsidered next slot). Default
+;; is true. Teammate: fill in the body using current-slot, etc.
+to-report willing-to-go?
+  report true
+end
+
 ;; Intra-day information is blended with the inductive per-slot prediction.
 ;; none:    inductive prediction only (classic El Farol, that slot's past days)
 ;; live:    also see the actual count of the previous slot today
@@ -240,7 +246,7 @@ end
 ;; successive "past days" cycled into that slot's memory.
 to load-seed-means
   ;; fallback = scaled weekday-pooled means from params.json seed_history
-  set seed-means map [ m -> (list m) ] [ 27.97 30.58 30.05 31.32 28.80 28.78 26.72 25.80 24.59 26.87 22.70 26.23 ]
+  set seed-means map [ m -> (list m) ] [ 10.48 10.48 15.38 13.25 13.59 15.12 14.18 16.28 19.18 19.27 21.80 22.15 23.90 23.56 27.51 26.71 26.06 26.88 29.15 27.97 30.58 30.05 31.32 28.80 28.78 26.72 25.80 24.59 26.87 22.70 26.23 ]
   let path seed-file-path
   if path = "" [ stop ]
   let rows csv:from-file path
@@ -296,6 +302,14 @@ to-report seed-file-path
     report "data/processed/demand_curve.csv"
   ]
   report ""
+end
+
+;; label of slot i: 06:30 plus 30 minutes per slot ("06:30" ... "21:30")
+to-report slot-label-at [i]
+  let minutes 390 + 30 * i
+  let h floor (minutes / 60)
+  let m minutes mod 60
+  report (word (ifelse-value (h < 10) [ "0" ] [ "" ]) h ":" (ifelse-value (m < 10) [ "0" ] [ "" ]) m)
 end
 
 to-report pad-or-trim [xs n]
@@ -448,7 +462,7 @@ end
   <widgets>
     <view x="300" wrappingAllowedX="true" y="10" frameRate="30.0" minPycor="-17" height="424" showTickCounter="true" patchSize="12.0" fontSize="14" wrappingAllowedY="true" width="424" tickCounterLabel="ticks" maxPycor="17" updateMode="1" maxPxcor="17" minPxcor="-17"></view>
     <slider x="10" step="1" y="10" max="200" width="270" display="n-agents" height="50" min="10" direction="Horizontal" default="100.0" variable="n-agents"></slider>
-    <slider x="10" step="1" y="60" max="100" width="270" display="capacity" height="50" min="1" direction="Horizontal" default="38.0" variable="capacity"></slider>
+    <slider x="10" step="1" y="60" max="100" width="270" display="capacity" height="50" min="1" direction="Horizontal" default="37.0" variable="capacity"></slider>
     <slider x="10" step="1" y="110" max="10" width="270" display="memory-size" height="50" min="1" direction="Horizontal" default="5.0" variable="memory-size"></slider>
     <slider x="10" step="1" y="160" max="20" width="270" display="number-strategies" height="50" min="1" direction="Horizontal" default="10.0" variable="number-strategies"></slider>
     <slider x="10" step="1" y="210" max="6" width="270" display="delay" height="50" min="1" direction="Horizontal" default="2.0" variable="delay"></slider>
@@ -488,7 +502,7 @@ plotxy 0 capacity
 plotxy plot-x-max capacity</update>
       </pen>
     </plot>
-    <plot x="735" autoPlotX="false" yMax="100.0" autoPlotY="true" yAxis="Occupancy" y="315" xMin="0.0" height="190" legend="false" xMax="12.0" yMin="0.0" width="285" xAxis="Slot" display="Today by slot">
+    <plot x="735" autoPlotX="false" yMax="100.0" autoPlotY="true" yAxis="Occupancy" y="315" xMin="0.0" height="190" legend="false" xMax="31.0" yMin="0.0" width="285" xAxis="Slot" display="Today by slot">
       <setup></setup>
       <update></update>
       <pen interval="1.0" mode="1" display="today" color="-13345367" legend="true">
@@ -522,22 +536,22 @@ The inductive strategy machinery (`random-strategy`, `predict-attendance`, `upda
 
 ## WHAT IS IT?
 
-Western Student Recreation Centre (WSRC) weight rooms are a shared resource with a capacity. Students want one evening workout and prefer a half-hour that is not overcrowded. They cannot coordinate, and they only see a limited history of past occupancy -- plus, depending on the information condition, a live or delayed count from earlier tonight.
+Western Student Recreation Centre (WSRC) weight rooms are a shared resource with a capacity. Students want one workout per day and prefer a half-hour that is not overcrowded. They cannot coordinate, and they only see a limited history of past occupancy -- plus, depending on the information condition, a live or delayed count from earlier today.
 
-This is Arthur's (1994) El Farol bar problem recast as a **congestion / minority game over K evening slots**. The question the experiments ask is whether publishing live occupancy reduces overcrowding, and whether a delayed feed (the real WSRC page updates every 30 minutes, plus travel time) creates oscillation.
+This is Arthur's (1994) El Farol bar problem recast as a **congestion / minority game over K daily slots**. The question the experiments ask is whether publishing live occupancy reduces overcrowding, and whether a delayed feed (the real WSRC page updates every 30 minutes, plus travel time) creates oscillation.
 
-Default parameters (`n-agents` = 100, `capacity` = 38, 12 slots from 16:00 to 22:00) come from `data/params.json`, which scales observed 3WR+4WR counts so that the population is 100 and capacity is the scaled 95th percentile.
+Default parameters (`n-agents` = 100, `capacity` = 37, 31 slots from 06:30 to 22:00) come from `data/params.json`, which scales observed 3WR+4WR counts so that the population is 100 and capacity is the scaled 95th percentile.
 
 ## HOW IT WORKS
 
-Each tick is one 30-minute slot. A day is 12 slots. Each agent wants at most one visit per day.
+Each tick is one 30-minute slot. A day is 31 slots. Each agent wants at most one visit per day.
 
 At slot *s*, every agent who has not yet gone or skipped:
 
 1. Swaps that slot's past-day history into the original `history` list.
 2. Picks the strategy in its bag with the lowest mean absolute error on that slot (unchanged `update-strategies`).
-3. Forms an inductive prediction of tonight's occupancy in slot *s* (unchanged `predict-attendance`).
-4. If `info-mode` is `live` or `delayed`, blends that prediction 50/50 with the intra-day signal (previous slot tonight, or the slot `delay` slots ago). Slot 0, and delayed slots before the lag is available, use the inductive prediction only.
+3. Forms an inductive prediction of today's occupancy in slot *s* (unchanged `predict-attendance`).
+4. If `info-mode` is `live` or `delayed`, blends that prediction 50/50 with the intra-day signal (previous slot today, or the slot `delay` slots ago). Slot 0, and delayed slots before the lag is available, use the inductive prediction only.
 5. Goes if the (possibly blended) prediction is at most `capacity`; otherwise waits.
 
 Agents still waiting in the last slot either go anyway (`must-go?` on) or skip (`must-go?` off).
@@ -550,7 +564,7 @@ A visit is a **good visit** when the agent went and the slot ended at or under c
 
 ## HOW TO USE IT
 
-Set `info-mode`, `memory-size`, `number-strategies`, and `delay` (used only when `info-mode` is `delayed`; 2 = one hour). Press SETUP, then GO (one slot) or GO-DAY (12 slots).
+Set `info-mode`, `memory-size`, `number-strategies`, and `delay` (used only when `info-mode` is `delayed`; 2 = one hour). Press SETUP, then GO (one slot) or GO-DAY (31 slots).
 
 Colours: white = still deciding, orange = in the gym this slot, yellow = already worked out, gray = skipped. Green patches are home; blue patches are the gym.
 
@@ -563,11 +577,11 @@ Monitors on the right are the BehaviorSpace reporters, computed after `burn-in-d
 * `skip-rate` -- skips / agent-days
 * `lag1-autocorr` -- Pearson correlation of occupancy at consecutive slots
 
-A typical experiment run is 40 days (480 ticks) with the first 10 days discarded. Run `python analysis/run_pilot.py` for the `info-memory-pilot` (5 seeds) and `info-memory-grid` (30 seeds) experiments, or open BehaviorSpace on this model. Both record the six reporters at the end of each run. Turn `visualize?` off for BehaviorSpace; patch movement is display-only and does not change the reporters.
+A typical experiment run is 40 days (1240 ticks) with the first 10 days discarded. Run `python analysis/run_pilot.py` for the `info-memory-pilot` (5 seeds) and `info-memory-grid` (30 seeds) experiments, or open BehaviorSpace on this model. Both record the six reporters at the end of each run. Turn `visualize?` off for BehaviorSpace; patch movement is display-only and does not change the reporters.
 
 ## THINGS TO NOTICE
 
-Under `none`, this is twelve coupled El Farol games: agents only remember past days of the slot they are considering. Attendance in a slot should wander around capacity once strategies adapt.
+Under `none`, this is 31 coupled El Farol games: agents only remember past days of the slot they are considering. Attendance in a slot should wander around capacity once strategies adapt.
 
 Under `live`, a crowded slot should push remaining agents later (or to skip), which can flatten the evening peak.
 
@@ -579,7 +593,7 @@ Compare `info-mode` = none / live / delayed at `memory-size` 1, 5, 10. Turn `mus
 
 ## FORMAL MODEL
 
-N agents, K = 12 slots, action a_i in {1..K, skip}. Slot payoff u = 1 if n_s <= C, 0 if over, 0 for skip. Agents use inductive prediction with a bag of S linear predictors over the last M days of that slot, choosing the best by MAE -- a congestion/minority game solved by inductive learning (Arthur 1994; Fogel et al. 1999). `info-mode` adds an intra-day observation of n_{s-1} or n_{s-delay} to the prediction.
+N agents, K = 31 slots, action a_i in {1..K, skip}. Slot payoff u = 1 if n_s <= C, 0 if over, 0 for skip. Agents use inductive prediction with a bag of S linear predictors over the last M days of that slot, choosing the best by MAE -- a congestion/minority game solved by inductive learning (Arthur 1994; Fogel et al. 1999). `info-mode` adds an intra-day observation of n_{s-1} or n_{s-delay} to the prediction.
 
 ## CREDITS AND REFERENCES
 
@@ -1302,10 +1316,10 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
       </indicator>
     </shape>
   </linkShapes>
-  <previewCommands>setup repeat 24 [ go ]</previewCommands>
+  <previewCommands>setup repeat 62 [ go ]</previewCommands>
   <citation year1="2007" cite="Rand, W., Wilensky, U."></citation>
   <experiments>
-    <experiment name="info-memory-pilot" repetitions="5" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="480">
+    <experiment name="info-memory-pilot" repetitions="5" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
       <setup>setup</setup>
       <go>go</go>
       <metrics>
@@ -1334,7 +1348,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
           <value value="100"/>
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
-          <value value="38"/>
+          <value value="37"/>
         </enumeratedValueSet>
         <enumeratedValueSet variable="delay">
           <value value="2"/>
@@ -1353,7 +1367,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         </enumeratedValueSet>
       </constants>
     </experiment>
-    <experiment name="info-memory-grid" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="480">
+    <experiment name="info-memory-grid" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
       <setup>setup</setup>
       <go>go</go>
       <metrics>
@@ -1382,7 +1396,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
           <value value="100"/>
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
-          <value value="38"/>
+          <value value="37"/>
         </enumeratedValueSet>
         <enumeratedValueSet variable="delay">
           <value value="2"/>
@@ -1401,7 +1415,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         </enumeratedValueSet>
       </constants>
     </experiment>
-    <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="24">
+    <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="62">
       <setup>setup</setup>
       <go>go</go>
       <metrics>
@@ -1426,7 +1440,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
           <value value="100"/>
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
-          <value value="38"/>
+          <value value="37"/>
         </enumeratedValueSet>
         <enumeratedValueSet variable="delay">
           <value value="2"/>

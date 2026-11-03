@@ -1,8 +1,17 @@
 {
-  "scope": "Regular-term Monday-Thursday evenings 16:00-22:00, fitness = 3WR+4WR. Reading week, exams, holidays, weekends, and summer are excluded.",
-  "n_slots": 324,
-  "n_days": 81,
+  "scope": "Regular-term Monday-Thursday 06:30-22:00, fitness = 3WR+4WR. Reading week, exams, holidays, weekends, and summer are excluded.",
+  "n_slots": 593,
+  "n_days": 89,
   "hourly_mean_profile": {
+    "07:00": 80.77,
+    "08:00": 85.08,
+    "09:00": 93.14,
+    "10:00": 110.83,
+    "11:00": 130.19,
+    "12:00": 145.06,
+    "13:00": 159.64,
+    "14:00": 167.63,
+    "15:00": 177.62,
     "16:00": 180.27,
     "17:00": 192.69,
     "18:00": 182.58,
@@ -11,6 +20,25 @@
     "21:00": 149.4
   },
   "slot_mean_profile": {
+    "06:30": 66.43,
+    "07:00": 66.43,
+    "07:30": 97.5,
+    "08:00": 84.0,
+    "08:30": 86.17,
+    "09:00": 95.83,
+    "09:30": 89.9,
+    "10:00": 103.24,
+    "10:30": 121.58,
+    "11:00": 122.19,
+    "11:30": 138.19,
+    "12:00": 140.43,
+    "12:30": 151.53,
+    "13:00": 149.35,
+    "13:30": 174.44,
+    "14:00": 169.36,
+    "14:30": 165.25,
+    "15:00": 170.42,
+    "15:30": 184.83,
     "16:00": 177.32,
     "16:30": 193.88,
     "17:00": 190.51,
@@ -24,15 +52,15 @@
     "21:00": 143.94,
     "21:30": 166.27
   },
-  "pct_slots_over_capacity": 4.63,
-  "capacity_used": 239,
-  "capacity_definition": "95th percentile of the same evening window",
-  "coefficient_of_variation": 0.2366,
+  "pct_slots_over_capacity": 4.89,
+  "capacity_used": 236,
+  "capacity_definition": "95th percentile of the same daily window",
+  "coefficient_of_variation": 0.2944,
   "lag1_autocorr": {
-    "adjacent_slots": 0.7507,
-    "n_pairs": 62
+    "adjacent_slots": 0.8698,
+    "n_pairs": 142
   },
   "peak_hour": "17:00",
-  "mean_occupancy": 173.11,
-  "std_occupancy": 40.96
+  "mean_occupancy": 158.4,
+  "std_occupancy": 46.64
 }

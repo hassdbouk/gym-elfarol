@@ -1,6 +1,6 @@
 """Derive NetLogo parameters and validation targets from the 30-min panel.
 
-Writes `data/params.json` (capacity, N, evening slots, demand curve),
+Writes `data/params.json` (capacity, N, daily slots 06:30-22:00, demand curve),
 `data/processed/validation_targets.json` (hourly profile, % over capacity,
 coefficient of variation, lag-1 autocorrelation), and
 `netlogo/seed_history.csv` for the Gym El Farol csv extension.
@@ -36,11 +36,14 @@ LOG_PATH = ROOT / "data" / "processed" / "calibrate.log"
 
 TZ_NAME = "America/Toronto"
 N_AGENTS = 100
-SLOT_START = time(16, 0)
+SLOT_START = time(6, 30)
 SLOT_END = time(22, 0)
 SLOT_MINUTES = 30
+# A weekday-by-slot demand value needs at least this many observations; otherwise
+# it is left null and the model falls back to the pooled slot mean.
+MIN_DAY_OBS = 3
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-# Friday closes at 20:00, so the 12-slot evening window is only fully open Mon-Thu.
+# Friday closes at 20:00, so the 31-slot window is only fully open Mon-Thu.
 FULL_WINDOW_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday")
 
 
@@ -133,12 +136,12 @@ def demand_curve(sample: pd.DataFrame) -> tuple[dict[str, dict[str, float | None
         curve[day] = {}
         n_obs[day] = {}
         for label in labels:
-            if (day, label) in means.index:
+            n = int(counts.loc[(day, label)]) if (day, label) in means.index else 0
+            n_obs[day][label] = n
+            if n >= MIN_DAY_OBS:
                 curve[day][label] = float(means.loc[(day, label)])
-                n_obs[day][label] = int(counts.loc[(day, label)])
             else:
                 curve[day][label] = None
-                n_obs[day][label] = 0
     return curve, n_obs
 
 
@@ -156,6 +159,24 @@ def weekday_mean_curve(sample: pd.DataFrame) -> list[dict[str, Any]]:
                 "n_obs": int(counts[label]) if label in counts.index else 0,
             }
         )
+    return fill_pooled_gaps(rows)
+
+
+def fill_pooled_gaps(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Fill pooled slot means with no observations from neighbouring slots.
+
+    Interior gaps are linearly interpolated; leading/trailing gaps copy the
+    nearest measured slot (06:30 copies 07:00). Each row gets a `filled` flag.
+    """
+    series = pd.Series(
+        [np.nan if r["mean_occupancy"] is None else r["mean_occupancy"] for r in rows],
+        dtype=float,
+    )
+    filled = series.interpolate(limit_direction="both")
+    for row, value in zip(rows, filled):
+        row["filled"] = row["mean_occupancy"] is None and bool(pd.notna(value))
+        if row["filled"]:
+            row["mean_occupancy"] = round(float(value), 2)
     return rows
 
 
@@ -234,7 +255,7 @@ def build_params(sample: pd.DataFrame, evening_all: pd.DataFrame) -> dict[str, A
         "capacity_note": (
             "Posted 3WR/4WR capacities from Rec Services are not in the repo yet "
             "(email-capacity still pending). Fallback is the 95th percentile of "
-            "observed 3WR+4WR counts on regular-term Mon-Thu evenings 16:00-22:00."
+            "observed 3WR+4WR counts on regular-term Mon-Thu, 06:30-22:00."
         ),
         "window": {
             "start": SLOT_START.strftime("%H:%M"),
@@ -288,7 +309,7 @@ def build_targets(sample: pd.DataFrame, params: dict[str, Any]) -> dict[str, Any
     }
     return {
         "scope": (
-            "Regular-term Monday-Thursday evenings 16:00-22:00, fitness = 3WR+4WR. "
+            "Regular-term Monday-Thursday 06:30-22:00, fitness = 3WR+4WR. "
             "Reading week, exams, holidays, weekends, and summer are excluded."
         ),
         "n_slots": int(len(sample)),
@@ -297,7 +318,7 @@ def build_targets(sample: pd.DataFrame, params: dict[str, Any]) -> dict[str, Any
         "slot_mean_profile": slot_profile,
         "pct_slots_over_capacity": round(float(over.mean() * 100), 2),
         "capacity_used": capacity_obs,
-        "capacity_definition": "95th percentile of the same evening window",
+        "capacity_definition": "95th percentile of the same daily window",
         "coefficient_of_variation": coefficient_of_variation(fitness),
         "lag1_autocorr": lag1_autocorr(sample),
         "peak_hour": max(hourly_profile(sample), key=hourly_profile(sample).get),
@@ -315,6 +336,7 @@ def write_demand_csv(params: dict[str, Any], path: Path) -> None:
         row["mean_occupancy"] = seed.get("mean_occupancy")
         row["mean_occupancy_scaled"] = seed.get("mean_occupancy_scaled")
         row["n_obs"] = seed.get("n_obs")
+        row["filled"] = seed.get("filled", False)
         for day in WEEKDAYS:
             row[day.lower()] = params["demand_curve"].get(day, {}).get(label)
             row[f"{day.lower()}_n"] = params["demand_curve_n_obs"].get(day, {}).get(label, 0)
@@ -340,6 +362,7 @@ def write_seed_csv(params: dict[str, Any], path: Path) -> None:
             "mean_occupancy": seed.get("mean_occupancy"),
             "mean_occupancy_scaled": seed.get("mean_occupancy_scaled"),
             "n_obs": seed.get("n_obs"),
+            "filled": seed.get("filled", False),
         }
         for day in WEEKDAYS:
             row[f"{day.lower()}_scaled"] = scaled.get(day, {}).get(label)
@@ -394,7 +417,19 @@ def calibrate(panel_path: Path = PANEL_PATH) -> tuple[dict[str, Any], dict[str, 
 def run_self_test() -> int:
     failed = 0
     labels = slot_labels()
-    if len(labels) != 12 or labels[0] != "16:00" or labels[-1] != "21:30":
+    gap_rows: list[dict[str, Any]] = [
+        {"slot": "06:30", "mean_occupancy": None},
+        {"slot": "07:00", "mean_occupancy": 10.0},
+        {"slot": "07:30", "mean_occupancy": None},
+        {"slot": "08:00", "mean_occupancy": 20.0},
+    ]
+    fill_pooled_gaps(gap_rows)
+    if [r["mean_occupancy"] for r in gap_rows] != [10.0, 10.0, 15.0, 20.0] or [
+        r["filled"] for r in gap_rows
+    ] != [True, False, True, False]:
+        failed += 1
+        logging.error("gap fill wrong: %s", gap_rows)
+    if len(labels) != 31 or labels[0] != "06:30" or labels[-1] != "21:30":
         failed += 1
         logging.error("slot labels wrong: %s", labels)
     if abs(scale_occupancy(200, 250) - 40.0) > 1e-9:

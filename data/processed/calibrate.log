@@ -8,3 +8,18 @@
 2026-10-27 19:59:36,323 INFO validation: % over capacity=4.63, CV=0.2366, lag1=0.7507
 2026-10-27 20:13:49,236 INFO All self-tests passed
 2026-10-27 20:13:49,878 INFO Wrote C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\netlogo\seed_history.csv from C:\Users\hass\Documents\notes workplace\Multi Agent\Project\gym-elfarol\data\params.json
+2026-11-03 15:18:06,805 INFO All self-tests passed
+2026-11-03 15:18:07,806 INFO Calibration sample: 593 slots across 89 Mon-Thu evenings
+2026-11-03 15:18:07,845 INFO seed_history.csv: 31 slots for NetLogo csv extension
+2026-11-03 15:18:07,845 INFO params.json: n_agents=100 capacity=37 (observed p95=236, peak=317)
+2026-11-03 15:18:07,845 INFO validation: % over capacity=4.89, CV=0.2944, lag1=0.8698
+2026-11-03 15:19:18,025 INFO All self-tests passed
+2026-11-03 15:19:18,950 INFO Calibration sample: 593 slots across 89 Mon-Thu evenings
+2026-11-03 15:19:18,983 INFO seed_history.csv: 31 slots for NetLogo csv extension
+2026-11-03 15:19:18,984 INFO params.json: n_agents=100 capacity=37 (observed p95=236, peak=317)
+2026-11-03 15:19:18,984 INFO validation: % over capacity=4.89, CV=0.2944, lag1=0.8698
+2026-11-03 15:24:51,713 INFO All self-tests passed
+2026-11-03 15:24:53,289 INFO Calibration sample: 593 slots across 89 Mon-Thu evenings
+2026-11-03 15:24:53,359 INFO seed_history.csv: 31 slots for NetLogo csv extension
+2026-11-03 15:24:53,360 INFO params.json: n_agents=100 capacity=37 (observed p95=236, peak=317)
+2026-11-03 15:24:53,360 INFO validation: % over capacity=4.89, CV=0.2944, lag1=0.8698
