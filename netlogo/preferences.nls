@@ -1,0 +1,147 @@
+;; Shared CSV rules and reproducible profiles. Keep decision semantics aligned
+;; with web/simulation.js. All times are minutes after midnight.
+
+to load-profile-rules
+  let rule-path ""
+  foreach [ "profile-rules.csv" "../web/profile-rules.csv" "web/profile-rules.csv" ] [ candidate ->
+    if rule-path = "" and file-exists? candidate [ set rule-path candidate ]
+  ]
+  if rule-path = "" [ error "Missing profile-rules.csv. Open the model in its repository or use analysis/run_pilot.py." ]
+  let rows but-first csv:from-file rule-path
+  set availability-rules profile-rows rows "availability" 4
+  set preference-rules profile-rows rows "preference" 4
+  set flexibility-rules profile-rows rows "flexibility" 4
+  set crowding-rules profile-rows rows "crowding" 3
+end
+
+to-report profile-rows [rows kind expected-count]
+  let selected sort-by [ [a b] -> item 1 a < item 1 b ] (filter [row -> first row = kind] rows)
+  if length selected != expected-count [ error (word "Invalid number of " kind " profiles") ]
+  foreach range expected-count [ i ->
+    if item 1 (item i selected) != i [ error "Profile IDs must be consecutive and start at zero" ]
+  ]
+  report selected
+end
+
+to-report profile-random
+  set profile-rng (profile-rng * 16807) mod 2147483647
+  report profile-rng / 2147483647
+end
+
+to-report model-random
+  set model-rng (model-rng * 16807) mod 2147483647
+  report model-rng / 2147483647
+end
+
+to-report profile-shuffle [values]
+  let shuffled values
+  let i length shuffled - 1
+  while [i > 0] [
+    let j floor (profile-random * (i + 1))
+    let saved item i shuffled
+    set shuffled replace-item i shuffled (item j shuffled)
+    set shuffled replace-item j shuffled saved
+    set i i - 1
+  ]
+  report shuffled
+end
+
+to build-profile-assignments
+  set profile-rng (abs (int population-seed) mod 2147483646) + 1
+  set model-rng (abs (int simulation-seed) mod 2147483646) + 1
+  let availability-values profile-shuffle (n-values n-agents [i -> i mod 4])
+  let flexibility-values profile-shuffle (n-values n-agents [i -> i mod 4])
+  let crowd-offset (abs population-seed) mod 3
+  let crowding-values profile-shuffle (n-values n-agents [i -> (i + crowd-offset) mod 3])
+  let preference-values n-values n-agents [0]
+  foreach range 4 [ group ->
+    let members profile-shuffle (filter [i -> item i availability-values = group] (range n-agents))
+    let j 0
+    foreach members [ agent-id ->
+      set preference-values replace-item agent-id preference-values ((j + group) mod 4)
+      set j j + 1
+    ]
+  ]
+  set profile-assignments n-values n-agents [i ->
+    (list (item i availability-values) (item i preference-values)
+      (item i flexibility-values) (item i crowding-values)
+      (n-values n-slots [profile-random]))
+  ]
+end
+
+to assign-profile
+  let row item who profile-assignments
+  set availability-group item 0 row
+  set time-preference item 1 row
+  set flexibility-level item 2 row
+  set crowding-preference item 3 row
+  set slot-tie-priorities item 4 row
+  set allowed-start-slots filter [s -> available-start? s] (range n-slots)
+end
+
+to-report preference-distance [slot]
+  if time-preference = 3 [ report 0 ]
+  let rule item time-preference preference-rules
+  let start-minute 390 + 30 * slot
+  report max (list 0 (item 3 rule - start-minute) (start-minute - (item 4 rule - 30)))
+end
+
+to-report available-start? [slot]
+  let start-minute 390 + 30 * slot
+  let end-minute start-minute + workout-slots * 30
+  let row item availability-group availability-rules
+  let in-first? start-minute >= item 3 row and end-minute <= item 4 row
+  let in-second? item 5 row >= 0 and start-minute >= item 5 row and end-minute <= item 6 row
+  if not (in-first? or in-second?) or end-minute > 1320 [ report false ]
+  let flex item 7 (item flexibility-level flexibility-rules)
+  report flex < 0 or preference-distance slot <= flex
+end
+
+to-report willing-to-go?
+  report member? current-slot allowed-start-slots
+end
+
+to-report slot-utility [slot expected-count]
+  let flex item 7 (item flexibility-level flexibility-rules)
+  let divisor ifelse-value (flex < 0) [930] [max (list 1 flex)]
+  let time-cost preference-distance slot / divisor
+  let direction item 7 (item crowding-preference crowding-rules)
+  report direction * expected-count / capacity - time-cost
+end
+
+to-report choose-now? [current-prediction]
+  let candidates filter [s -> s >= current-slot] allowed-start-slots
+  if not member? current-slot candidates [ report false ]
+  if must-go? and current-slot = last candidates [ report true ]
+  let best-slot -1
+  let best-score -1.0E20
+  foreach candidates [ s ->
+    ;; Current-slot prediction uses the agent's learned strategy and available
+    ;; signal. Future slots use historical means, never future actual counts.
+    let estimate ifelse-value (s = current-slot)
+      [current-prediction]
+      [mean (sublist (item s slot-histories) 0 memory-size)]
+    set estimate max (list 0 (min (list n-agents estimate)))
+    if estimate <= capacity [
+      let score slot-utility s estimate
+      let take? score > best-score
+      if score = best-score [
+        ifelse best-slot < 0 [ set take? true ]
+          [ set take? item s slot-tie-priorities > item best-slot slot-tie-priorities ]
+      ]
+      if take? [ set best-slot s set best-score score ]
+    ]
+  ]
+  report best-slot = current-slot
+end
+
+to export-agent-profiles [path]
+  let rows (list ["agent_id" "availability" "time_preference" "flexibility" "crowding" "allowed_start_slots" "tie_priorities" "population_seed" "simulation_seed"])
+  foreach sort turtles [ agent ->
+    ask agent [
+      set rows lput (list who availability-group time-preference flexibility-level crowding-preference
+        (word allowed-start-slots) (word slot-tie-priorities) population-seed simulation-seed) rows
+    ]
+  ]
+  csv:to-file path rows
+end

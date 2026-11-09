@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">GYM EL FAROL / LIVE MODEL VIEW</p>
           <h1>See the decisions happen.</h1>
-          <p class="lede">A visual stream for the slot-based El Farol gym model. Each tick is one 30-minute decision point.</p>
+          <p class="lede">100 individual schedules, time preferences, flexibility levels, and crowding preferences. Each tick is 30 minutes; each workout lasts one hour.</p>
         </div>
         <div class="status-pill"><span id="status-dot"></span><span id="status">Ready</span></div>
       </header>
@@ -46,6 +46,14 @@
           <label for="tick-duration">Time per tick <output id="tick-duration-value">850 ms</output></label>
           <input id="tick-duration" type="range" min="50" max="2000" value="850" step="50">
         </div>
+        <div class="control-group">
+          <label for="population-seed">Population seed</label>
+          <input id="population-seed" type="number" min="0" max="2147483646" step="1" value="42">
+        </div>
+        <div class="control-group">
+          <label for="simulation-seed">Strategy seed</label>
+          <input id="simulation-seed" type="number" min="0" max="2147483646" step="1" value="1234">
+        </div>
         <div class="button-row">
           <button id="reset" class="button secondary">Reset</button>
           <button id="step" class="button secondary">Step</button>
@@ -53,10 +61,18 @@
         </div>
       </section>
 
+      <details class="panel profile-panel" open>
+        <summary>Population profiles and scheduling rules</summary>
+        <p>Morning: 06:30-12:00 / Afternoon: 12:00-17:00 / Night: 17:00-22:00 / Whenever: any available time.</p>
+        <p>Flexibility extends the preferred start period by 0, 1, or 3 hours, or allows any available start. The entire one-hour workout must fit inside an availability window. Everyone avoids predicted over-capacity slots; crowding preference ranks the remaining choices.</p>
+        <div id="population-summary" class="population-summary"></div>
+        <p>Changing information or memory resets the run while preserving population assignments for the same population seed. A new population seed creates a different balanced assignment.</p>
+        <button type="button" id="export-profiles" class="button secondary">Download agent profiles</button>
+      </details>
       <section class="metrics">
         <article class="metric panel"><span>Current slot</span><strong id="metric-slot">06:30</strong><small id="metric-day">Day 1</small></article>
         <article class="metric panel"><span>Occupancy</span><strong id="metric-attendance">0 / 37</strong><small id="metric-capacity">Capacity 37</small></article>
-        <article class="metric panel"><span>Decisions this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 going · 0 waiting</small></article>
+        <article class="metric panel"><span>New arrivals this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 going Â· 0 waiting</small></article>
         <article class="metric panel"><span>Peak so far</span><strong id="metric-peak">0</strong><small id="metric-over">No crowding yet</small></article>
       </section>
 
@@ -64,9 +80,11 @@
         <article class="panel agents-panel">
           <div class="section-heading">
             <div><p class="eyebrow">AGENT FIELD</p><h2>What the population is doing</h2></div>
-            <div class="legend"><span><i class="legend-dot going"></i>Going</span><span><i class="legend-dot waiting"></i>Waiting</span><span><i class="legend-dot skipped"></i>Skipped</span><span><i class="legend-dot done"></i>Already chose</span></div>
+            <div class="legend"><span><i class="legend-dot going"></i>In gym</span><span><i class="legend-dot waiting"></i>Waiting</span><span><i class="legend-dot skipped"></i>Skipped</span><span><i class="legend-dot done"></i>Finished</span></div>
           </div>
+          <p class="muted">Select an agent to inspect their schedule and preferences.</p>
           <div id="agent-grid" class="agent-grid" aria-label="Agent decision field"></div>
+          <div id="agent-detail" class="agent-detail" aria-live="polite"></div>
         </article>
 
         <article class="panel feed-panel">
@@ -76,12 +94,13 @@
       </section>
 
       <section class="panel chart-panel">
-        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">orange line = capacity · older data is compressed, not dropped</span></div>
+        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">orange line = capacity Â· older data is compressed, not dropped</span></div>
         <div class="chart-wrap"><canvas id="occupancy-chart" height="220"></canvas></div>
       </section>
 
       <footer>Browser visualization of the decision rules in <code>netlogo/GymElFarol.nlogox</code>. The NetLogo model remains the experiment source of truth.</footer>
     </main>
+    <script src="simulation.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

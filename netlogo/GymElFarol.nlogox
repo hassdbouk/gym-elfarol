@@ -2,10 +2,12 @@
 <model version="NetLogo 7.0.4" snapToGrid="true">
   <code><![CDATA[
 extensions [ csv ]
+__includes [ "preferences.nls" ]
 
 ;; Gym El Farol -- slot-based gym crowding model.
 ;; Strategy machinery (random-strategy, predict-attendance, update-strategies)
-;; is copied unchanged from IABM chapter 3 El Farol (Rand & Wilensky 2007).
+;; follows IABM chapter 3 El Farol (Rand & Wilensky 2007).
+;; Seeded strategy generation and population-size scaling support reproducible runs.
 ;; Decision rule, information, and memory are the gym extension:
 ;;   each tick = one 30-min slot (31 slots = one weekday, 06:30-22:00);
 ;;   each agent wants one workout per day and chooses a slot or skips;
@@ -34,6 +36,8 @@ globals [
   n-skips
   n-agent-days
   peak-so-far
+  availability-rules preference-rules flexibility-rules crowding-rules
+  profile-rng model-rng profile-assignments
 ]
 
 turtles-own [
@@ -44,7 +48,9 @@ turtles-own [
   decided?              ;; already went or skipped today
   went-today?
   skipped-today?
-  good-visit?           ;; went and the chosen slot was at or under capacity
+  good-visit?           ;; every occupied slot of this visit was at or under capacity
+  availability-group time-preference flexibility-level crowding-preference
+  slot-tie-priorities allowed-start-slots departure-slot visit-start-slot
 ]
 
 to setup
@@ -70,6 +76,9 @@ to setup
   set gym-patches patches with [ pxcor > 0 and pycor > 0 ]
   ask gym-patches [ set pcolor blue ]
 
+  load-profile-rules
+  build-profile-assignments
+  random-seed simulation-seed
   load-seed-means
   set slot-histories map [ m -> make-slot-history m ] seed-means
   set history first slot-histories
@@ -93,9 +102,16 @@ to setup
     set attend? false
     set prediction 0
     move-to-empty-one-of home-patches
-    set strategies n-values number-strategies [ random-strategy ]
-    set best-strategy first strategies
-    update-strategies
+  ]
+  foreach sort turtles [ agent ->
+    ask agent [
+      assign-profile
+      set departure-slot -1
+      set visit-start-slot -1
+      set strategies n-values number-strategies [ random-strategy ]
+      set best-strategy first strategies
+      update-strategies
+    ]
   ]
   reset-ticks
 end
@@ -114,28 +130,25 @@ to go
   ;; unchanged strategy procedures can see it
   set history item current-slot slot-histories
 
-  ask turtles with [ not decided? and willing-to-go? ] [
+  ;; Depart before resolving this slot. All new decisions are simultaneous:
+  ;; actual attendance is counted only after every agent has decided.
+  ask turtles with [attend? and departure-slot <= current-slot] [ set attend? false ]
+  ask turtles with [not decided? and willing-to-go?] [
     update-strategies
     set prediction predict-attendance best-strategy sublist history 0 memory-size
     set prediction apply-info-signal prediction
-    ifelse prediction <= capacity [
+    if choose-now? prediction [
       set attend? true
       set decided? true
       set went-today? true
-    ] [
-      set attend? false
+      set good-visit? true
+      set visit-start-slot current-slot
+      set departure-slot current-slot + workout-slots
     ]
   ]
-
   if current-slot = n-slots - 1 [
-    ask turtles with [ not decided? ] [
-      ifelse must-go? [
-        set attend? true
-        set went-today? true
-      ] [
-        set attend? false
-        set skipped-today? true
-      ]
+    ask turtles with [not decided?] [
+      set skipped-today? true
       set decided? true
     ]
   ]
@@ -153,8 +166,8 @@ to go
 
   set attendance count turtles with [ attend? ]
   let over? attendance > capacity
-  ask turtles with [ attend? ] [
-    set good-visit? not over?
+  if over? [
+    ask turtles with [attend?] [ set good-visit? false ]
   ]
   if visualize? and over? [
     ask crowded-patch [ set plabel "CROWDED" ]
@@ -180,18 +193,13 @@ to start-new-day
     set skipped-today? false
     set good-visit? false
     set attend? false
+    set departure-slot -1
+    set visit-start-slot -1
     if visualize? [
       set color white
       move-to-empty-one-of home-patches
     ]
   ]
-end
-
-;; PREFERENCE HOOK (turtle context): report false to make this agent skip the
-;; current slot (it stays undecided and is reconsidered next slot). Default
-;; is true. Teammate: fill in the body using current-slot, etc.
-to-report willing-to-go?
-  report true
 end
 
 ;; Intra-day information is blended with the inductive per-slot prediction.
@@ -379,8 +387,10 @@ end
 to-report lag1-autocorr
   if not is-list? all-slot-attendance [ report 0 ]
   if length all-slot-attendance < 3 [ report 0 ]
-  let xs but-last all-slot-attendance
-  let ys but-first all-slot-attendance
+  let pair-indices filter [i -> (i + 1) mod n-slots != 0] (range (length all-slot-attendance - 1))
+  if length pair-indices < 2 [ report 0 ]
+  let xs map [i -> item i all-slot-attendance] pair-indices
+  let ys map [i -> item (i + 1) all-slot-attendance] pair-indices
   let mx mean xs
   let my mean ys
   let num sum (map [ [ x y ] -> (x - mx) * (y - my) ] xs ys)
@@ -406,7 +416,7 @@ end
 ;; currently being used and updates the performance of all strategies
 to update-strategies
   ;; initialize best-score to a maximum, which is the lowest possible score
-  let best-score memory-size * 100 + 1
+  let best-score 1.0E20
   foreach strategies [ the-strategy ->
     let score 0
     let week 1
@@ -426,7 +436,7 @@ end
 ;; determines how much emphasis is put on each previous time period when making
 ;; an attendance prediction for the next time period
 to-report random-strategy
-  report n-values (memory-size + 1) [1.0 - random-float 2.0]
+  report n-values (memory-size + 1) [1.0 - model-random * 2.0]
 end
 
 ;; This reports an agent's prediction of the current attendance
@@ -441,7 +451,7 @@ to-report predict-attendance [strategy subhistory]
   ;; one can think of it as the the agent's prediction of the bar's attendance
   ;; in the absence of any other data
   ;; then we multiply each week in the history by its respective weight
-  report 100 * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
+  report n-agents * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
 end
 
 ;; In this model it doesn't really matter exactly which patch
@@ -523,89 +533,99 @@ plotxy 0 capacity
 plotxy plot-x-max capacity</update>
       </pen>
     </plot>
+    <input x="1040" y="10" width="175" height="60" variable="population-seed" type="number" multiline="false">42</input>
+    <input x="1040" y="80" width="175" height="60" variable="simulation-seed" type="number" multiline="false">1234</input>
+    <slider x="1040" y="150" width="175" height="50" display="workout-slots" variable="workout-slots" min="1" max="6" step="1" default="2.0" direction="Horizontal"></slider>
   </widgets>
   <info><![CDATA[
-## ACKNOWLEDGMENT
+# Individual gym schedules and preferences
 
-This model extends the IABM Chapter 3 El Farol model:
+Implemented from the group input confirmed on November 9, 2026. The default population is 100 agents. Each agent has one availability group, time preference, flexibility level, and crowding preference. These are modeling assumptions, not surveyed student schedules.
 
-* Rand, W., Wilensky, U. (2007). NetLogo El Farol model. http://ccl.northwestern.edu/netlogo/models/ElFarol
-* Wilensky, U. & Rand, W. (2015). Introduction to Agent-Based Modeling. MIT Press.
+## Confirmed profiles
 
-The inductive strategy machinery (`random-strategy`, `predict-attendance`, `update-strategies`) is unchanged from that model. The gym-slot decision rule, per-slot memory, and `info-mode` are the extension.
+| Availability group | Allowed workout windows |
+| --- | --- |
+| 1 | 06:30-09:00 and 17:00-22:00 |
+| 2 | 09:00-12:00 and 14:00-22:00 |
+| 3 | 06:30-22:00 |
+| 4 | 10:00-15:00 and 18:00-21:00 |
 
-## WHAT IS IT?
+Time preferences are Morning (06:30-12:00), Night (17:00-22:00), Afternoon (12:00-17:00), and Whenever. Preference applies to the workout **start**, with the end of each preferred period exclusive. Flexibility extends the preferred start period by one hour, three hours, zero, or any available time. For example, a morning agent with one-hour flexibility may start as late as 12:30. Availability always takes priority.
 
-Western Student Recreation Centre (WSRC) weight rooms are a shared resource with a capacity. Students want one workout per day and prefer a half-hour that is not overcrowded. They cannot coordinate, and they only see a limited history of past occupancy -- plus, depending on the information condition, a live or delayed count from earlier today.
+Workouts last one hour, or two half-hour slots. The complete workout must fit inside one availability window and end by closing. An 08:30 start cannot cross group 1's 09:00 boundary. A workout cannot bridge the gap between two windows. The last possible gym-wide start is 21:00.
 
-This is Arthur's (1994) El Farol bar problem recast as a **congestion / minority game over K daily slots**. The question the experiments ask is whether publishing live occupancy reduces overcrowding, and whether a delayed feed (the real WSRC page updates every 30 minutes, plus travel time) creates oscillation.
+Crowding types are No difference, Likes it busy, and Likes it empty. They rank feasible predicted loads differently, but none deliberately chooses a forecast above capacity under the default `must-go? = false` setting. Simultaneous decisions can still produce actual over-capacity occupancy. Physical capacity is common to all agents.
 
-Default parameters (`n-agents` = 100, `capacity` = 37, 31 slots from 06:30 to 22:00) come from `data/params.json`, which scales observed 3WR+4WR counts so that the population is 100 and capacity is the scaled 95th percentile.
+The canonical profile definitions are `web/profile-rules.csv`. Both implementations read this file. Browser seed history is served directly from `netlogo/seed_history.csv`; it is not a second hard-coded copy.
 
-## HOW IT WORKS
+## Decision rule
 
-Each tick is one 30-minute slot. A day is 31 slots. Each agent wants at most one visit per day.
+At each slot, agents whose workout has ended leave first. Agents who have not visited consider their remaining allowed start slots:
 
-At slot *s*, every agent who has not yet gone or skipped:
+1. The current slot's prediction comes from that agent's best linear predictor, with the existing 50/50 live or delayed information blend. A missing early-day information signal falls back to the inductive prediction.
+2. Future candidate slots use their historical mean over the chosen memory length. Agents never see future actual occupancy. These estimates are refreshed when the next slot is reached.
+3. Predictions are bounded to zero through population size. Starts predicted to exceed capacity are excluded.
+4. Candidate score is `crowding direction * predicted occupancy / capacity - time cost`. Direction is 0 for indifferent, +1 for busy-seeking, and -1 for quiet-seeking. Time cost is the distance outside the preferred start period divided by the flexibility allowance. Unlimited flexibility uses the 930-minute operating span; Whenever has zero time cost. This equal weighting is an explicit implementation assumption.
+5. The agent attends if the current slot is its highest-scoring remaining candidate; otherwise it waits. Fixed, independently generated per-agent slot priorities break ties and prevent shared labels from forcing identical choices.
 
-1. Swaps that slot's past-day history into the original `history` list.
-2. Picks the strategy in its bag with the lowest mean absolute error on that slot (unchanged `update-strategies`).
-3. Forms an inductive prediction of today's occupancy in slot *s* (unchanged `predict-attendance`).
-4. If `info-mode` is `live` or `delayed`, blends that prediction 50/50 with the intra-day signal (previous slot today, or the slot `delay` slots ago). Slot 0, and delayed slots before the lag is available, use the inductive prediction only.
-5. Goes if the (possibly blended) prediction is at most `capacity`; otherwise waits.
+Zero-flexibility agents never start outside their preferred period. Unlimited flexibility allows movement within availability while preserving a soft preference for the named period. An agent with no feasible start skips; its availability is not silently changed. `must-go?`, if deliberately enabled in NetLogo, forces attendance only at that agent's final allowed start, never outside availability.
 
-Agents still waiting in the last slot either go anyway (`must-go?` on) or skip (`must-go?` off).
+## Occupancy and visit accounting
 
-Memory is **per slot, in days**. Each slot stores `memory-size * 2` past occupancies, the extra length needed so a strategy can be scored `memory-size` days back while still seeing a full window. This is the original El Farol bookkeeping, just one list per slot instead of one Thursday list.
+Agents remain in the gym for exactly two slots and can start at most one workout per day. They contribute to occupancy in both occupied slots. A successful visit must remain at or below capacity throughout the workout. A crowded first slot cannot be overwritten by a quieter later slot. Each visit or skip is counted once at day end. Lag-1 autocorrelation excludes overnight closing-to-opening pairs, matching the real-data calibration convention.
 
-If `seed-from-data?` is on, those lists are filled from `seed_history.csv`, which `analysis/calibrate.py` exports from `demand_curve` / `seed_history` in `data/params.json` (NetLogo reads it with the `csv` extension). Weekday-scaled means cycle through each slot's memory so the first few "past days" have real day-to-day shape; if those columns are missing, the pooled slot mean is repeated. If the file is missing, the same pooled means are hard-coded from `params.json`. If the switch is off, history is random in `0 .. n-agents - 1`, as in the original model.
+This fixes the prior NetLogo behavior in which `attend?` remained true until the next day. Old pilot results therefore do not validate the new model.
 
-A visit is a **good visit** when the agent went and the slot ended at or under capacity. Skip has payoff 0.
+## Balanced and reproducible populations
 
-## HOW TO USE IT
+There are 4 x 4 x 4 x 3 = 192 possible profile combinations. With 100 agents, the default allocation is:
 
-Set `info-mode`, `memory-size`, `number-strategies`, and `delay` (used only when `info-mode` is `delayed`; 2 = one hour). Press SETUP, then GO (one slot) or GO-DAY (31 slots).
+- 25 agents per availability group;
+- 25 per time preference, with six or seven of each preference inside each availability group;
+- 25 per flexibility level;
+- 33 or 34 per crowding type.
 
-Colours: white = still deciding, orange = in the gym this slot, yellow = already worked out, gray = skipped. Green patches are home; blue patches are the gym.
+Assignments are randomized subject to these marginal counts. This does not fully balance all 192 joint combinations. The population seed controls profile assignments and tie priorities, independently of the strategy seed and memory length. Attributes stay fixed throughout a run. Both implementations use the same specified Park-Miller generator for profiles and linear-strategy weights so matching configurations can be checked directly.
 
-Monitors on the right are the BehaviorSpace reporters, computed after `burn-in-days` (default 10):
+BehaviorSpace varies population seeds 1-5 for the pilot and 1-30 for the full grid, with one run per explicit seed per condition. Strategy seed is `100000 + population-seed`. Thus the same population is reused across information and memory conditions: 45 pilot runs and 270 full-grid runs. Each run lasts 40 days; the first 10 are discarded. Population and strategy seeds are recorded in the output. Use a new population seed to explore a new assignment; do not change it when comparing conditions for the same replicate.
 
-* `peak-occupancy` -- max slot occupancy after burn-in
-* `pct-slots-over-capacity` -- percent of recorded slots with attendance > capacity
-* `occupancy-variance` -- variance of recorded slot occupancies
-* `good-visit-rate` -- good visits / visits
-* `skip-rate` -- skips / agent-days
-* `lag1-autocorr` -- Pearson correlation of occupancy at consecutive slots
+In the browser, select an agent for its complete profile and allowed starts. Download agent profiles to retain the exact assignments, rules, and tie priorities. In the NetLogo Command Center, `export-agent-profiles "profiles.csv"` exports the current assignment.
 
-A typical experiment run is 40 days (1240 ticks) with the first 10 days discarded. Run `python analysis/run_pilot.py` for the `info-memory-pilot` (5 seeds) and `info-memory-grid` (30 seeds) experiments, or open BehaviorSpace on this model. Both record the six reporters at the end of each run. Turn `visualize?` off for BehaviorSpace; patch movement is display-only and does not change the reporters.
+## Running and verifying
 
-## THINGS TO NOTICE
+From the repository root:
 
-Under `none`, this is 31 coupled El Farol games: agents only remember past days of the slot they are considering. Attendance in a slot should wander around capacity once strategies adapt.
+```text
+python web/server.py
+node --test tests/simulation.test.js
+python tests/check_model_config.py
+python analysis/run_pilot.py --smoke
+python analysis/run_pilot.py --experiment info-memory-pilot --threads 4
+node tests/check_netlogo_parity.js data/processed/preferences_pilot.csv
+```
 
-Under `live`, a crowded slot should push remaining agents later (or to skip), which can flatten the evening peak.
+The browser runs at http://127.0.0.1:8000. Use Reset to replay the same seeds. Changing information, memory, population size, capacity, days, or seeds resets the run. The browser stops after exactly the requested number of days. Speed changes do not reset the experiment.
 
-Under `delayed`, agents react to a stale count. That lagged negative feedback is the candidate mechanism for oscillation (higher occupancy variance; `lag1-autocorr` of the slot series).
+Open `netlogo/GymElFarol.nlogox` with NetLogo 7.0.4. The older `.nlogo` file is retained as a legacy version and does not contain these changes. The runner accepts `--netlogo PATH` or `NETLOGO_HOME` if NetLogo is not in its usual installation directory. It stages the include file and shared CSV rules alongside the model.
 
-## THINGS TO TRY
+New results use `preferences_smoke.csv`, `preferences_pilot.csv`, or `preferences_info-memory-grid.csv`. Run metadata is stored beside each table as `.meta.json`, including hashes of the model, include, rule CSV, and seed CSV. The original pilot CSV and summary are retained as historical artifacts. `analysis/analyze_pilot.py` remains the older slot-model decision analysis; its fixed narrative and default output names should not be used as the new preference experiment report.
 
-Compare `info-mode` = none / live / delayed at `memory-size` 1, 5, 10. Turn `must-go?` on to force last-slot attendance. Turn `seed-from-data?` off to recover the original random history.
+## Research limitations to resolve before conclusions
 
-## FORMAL MODEL
+The existing default capacity of 37 and population of 100 are retained. They were calibrated before explicit one-hour duration and availability constraints were introduced. The per-day occupancy budget is now at most 200 occupied agent-slots, while the real-data seed profile sums to about 705 scaled occupied agent-slots. Initial history can seed learning but cannot resolve that structural mismatch. Review the population/duration calibration before claiming realistic crowding levels or validation against real counts. Do not tune capacity solely to manufacture a desired information effect.
 
-N agents, K = 31 slots, action a_i in {1..K, skip}. Slot payoff u = 1 if n_s <= C, 0 if over, 0 for skip. Agents use inductive prediction with a bag of S linear predictors over the last M days of that slot, choosing the best by MAE -- a congestion/minority game solved by inductive learning (Arthur 1994; Fogel et al. 1999). `info-mode` adds an intra-day observation of n_{s-1} or n_{s-delay} to the prediction.
+Balanced profile proportions and the choice-score weighting are assumptions. Later sensitivity analyses can vary them. The existing Word report and progress summary still contain older model descriptions and should be updated by the group to describe the final implementation and its limitations.
 
-## CREDITS AND REFERENCES
+## Credits and license
+
+Adapted from Rand, W., Wilensky, U. (2007). NetLogo El Farol model. http://ccl.northwestern.edu/netlogo/models/ElFarol
 
 Arthur, W. B. (1994). Inductive reasoning and bounded rationality. American Economic Review 84(2), 406-411.
 
 Fogel, D. B., Chellapilla, K., and Angeline, P. J. (1999). Inductive reasoning and bounded rationality reconsidered. IEEE Transactions on Evolutionary Computation 3(2), 142-146.
 
-Rand, W. and Wilensky, U. (2007). NetLogo El Farol model.
-
-## COPYRIGHT AND LICENSE
-
-The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. This gym-slot extension keeps that strategy code and adds the WSRC slot/information layer for a course project.
+The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. This course extension retains its linear-predictor learning approach and modifies random generation, population scaling, scheduling, information, and visit accounting.
 ]]></info>
   <turtleShapes>
     <shape name="default" rotatable="true" editableColorIndex="0">
@@ -1316,11 +1336,11 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
       </indicator>
     </shape>
   </linkShapes>
-  <previewCommands>setup repeat 62 [ go ]</previewCommands>
+  <previewCommands>setup repeat 31 [ go ]</previewCommands>
   <citation year1="2007" cite="Rand, W., Wilensky, U."></citation>
   <experiments>
-    <experiment name="info-memory-pilot" repetitions="5" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
-      <setup>setup</setup>
+    <experiment name="info-memory-pilot" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
       <go>go</go>
       <metrics>
         <metric>peak-occupancy</metric>
@@ -1329,46 +1349,46 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      </metrics>
+      <metric>simulation-seed</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
-          <value value="&quot;none&quot;"/>
-          <value value="&quot;live&quot;"/>
-          <value value="&quot;delayed&quot;"/>
+          <value value="&quot;none&quot;" />
+          <value value="&quot;live&quot;" />
+          <value value="&quot;delayed&quot;" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="memory-size">
-          <value value="1"/>
-          <value value="5"/>
-          <value value="10"/>
+          <value value="1" />
+          <value value="5" />
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="number-strategies">
-          <value value="10"/>
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100"/>
+          <value value="100" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
-          <value value="37"/>
+          <value value="37" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="delay">
-          <value value="2"/>
+          <value value="2" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="burn-in-days">
-          <value value="10"/>
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="must-go?">
-          <value value="false"/>
+          <value value="false" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="seed-from-data?">
-          <value value="true"/>
+          <value value="true" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="visualize?">
-          <value value="false"/>
+          <value value="false" />
         </enumeratedValueSet>
-      </constants>
+      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
     </experiment>
-    <experiment name="info-memory-grid" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
-      <setup>setup</setup>
+    <experiment name="info-memory-grid" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
       <go>go</go>
       <metrics>
         <metric>peak-occupancy</metric>
@@ -1377,46 +1397,46 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      </metrics>
+      <metric>simulation-seed</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
-          <value value="&quot;none&quot;"/>
-          <value value="&quot;live&quot;"/>
-          <value value="&quot;delayed&quot;"/>
+          <value value="&quot;none&quot;" />
+          <value value="&quot;live&quot;" />
+          <value value="&quot;delayed&quot;" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="memory-size">
-          <value value="1"/>
-          <value value="5"/>
-          <value value="10"/>
+          <value value="1" />
+          <value value="5" />
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="number-strategies">
-          <value value="10"/>
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100"/>
+          <value value="100" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
-          <value value="37"/>
+          <value value="37" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="delay">
-          <value value="2"/>
+          <value value="2" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="burn-in-days">
-          <value value="10"/>
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="must-go?">
-          <value value="false"/>
+          <value value="false" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="seed-from-data?">
-          <value value="true"/>
+          <value value="true" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="visualize?">
-          <value value="false"/>
+          <value value="false" />
         </enumeratedValueSet>
-      </constants>
+      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /><value value="11" /><value value="12" /><value value="13" /><value value="14" /><value value="15" /><value value="16" /><value value="17" /><value value="18" /><value value="19" /><value value="20" /><value value="21" /><value value="22" /><value value="23" /><value value="24" /><value value="25" /><value value="26" /><value value="27" /><value value="28" /><value value="29" /><value value="30" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
     </experiment>
-    <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="62">
-      <setup>setup</setup>
+    <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="31">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
       <go>go</go>
       <metrics>
         <metric>peak-occupancy</metric>
@@ -1425,39 +1445,40 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      </metrics>
+      <metric>simulation-seed</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
-          <value value="&quot;none&quot;"/>
+          <value value="&quot;none&quot;" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="memory-size">
-          <value value="5"/>
+          <value value="5" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="number-strategies">
-          <value value="10"/>
+          <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100"/>
+          <value value="100" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
-          <value value="37"/>
+          <value value="37" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="delay">
-          <value value="2"/>
+          <value value="2" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="burn-in-days">
-          <value value="0"/>
+          <value value="0" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="must-go?">
-          <value value="false"/>
+          <value value="false" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="seed-from-data?">
-          <value value="true"/>
+          <value value="true" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="visualize?">
-          <value value="false"/>
+          <value value="false" />
         </enumeratedValueSet>
-      </constants>
+      <enumeratedValueSet variable="population-seed"><value value="1" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
     </experiment>
   </experiments>
+
 </model>
