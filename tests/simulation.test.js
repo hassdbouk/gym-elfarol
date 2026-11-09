@@ -6,8 +6,9 @@ const G = require('../web/simulation.js');
 const root = path.resolve(__dirname, '..');
 const rules = G.parseRules(fs.readFileSync(path.join(root, 'web/profile-rules.csv'), 'utf8'));
 const seed = G.parseSeedHistory(fs.readFileSync(path.join(root, 'netlogo/seed_history.csv'), 'utf8'));
-// Tests pin the legacy rule unless they set decisionRule; utility-rule tests opt in.
-const create = options => new G.Simulation(rules, seed, { maxDays: 1, burnIn: 0, decisionRule: 'legacy', ...options });
+// Tests pin the legacy rule, 100 agents and unscaled seeds unless they say otherwise;
+// utility-rule and seed-scaling tests opt in.
+const create = options => new G.Simulation(rules, seed, { maxDays: 1, burnIn: 0, decisionRule: 'legacy', agentCount: 100, scaleSeedWithN: false, ...options });
 const agent = changes => ({ availability: 2, preference: 0, flexibility: 2, crowding: 0, tiePriorities: Array(31).fill(0), ...changes });
 
 test('confirmed availability windows and four named preferences are loaded', () => {
@@ -233,7 +234,8 @@ test('later-than-planned counts visits after the first-choice slot', () => {
   assert.equal(t.summary()['later-than-planned-share'], 0);
 });
 test('occupancy profile averages measured days and rmse uses the real seed curve', () => {
-  assert.equal(seed[0].mean, 10.48); assert.equal(seed[30].mean, 26.23);
+  const meanColumn = fs.readFileSync(path.join(root, 'netlogo/seed_history.csv'), 'utf8').trim().split(/\r?\n/).slice(1).map(l => Number(l.split(',')[3]));
+  assert.deepEqual(seed.map(s => s.mean), meanColumn); // mean_occupancy_scaled column
   const s = scripted(1, [[5]], { maxDays: 2 });
   runDay(s); s.agents[0].allowedStarts = [7]; runDay(s);
   const r = s.summary(), expected = Array(31).fill(0);
@@ -390,4 +392,59 @@ test('utility rule keeps visit accounting consistent and is reproducible', () =>
 });
 test('invalid utility settings are rejected', () => {
   for (const bad of [{ comfortThreshold: 1 }, { temperature: -0.1 }, { learningRate: 1.5 }, { crowdPenalty: NaN }]) assert.throws(() => utilitySim(bad));
+});
+
+// ---------- Recency-weighted strategy error, seed scaling, capacity ratio, profile mix ----------
+test('recency decay reweights strategy error toward recent days; 1 keeps equal weights', () => {
+  // Constant-only strategies (c = 1 and 1.4) on capacity 10 predict 10 and 14.
+  const a = { strategies: [[1, 0, 0], [1.4, 0, 0]] };
+  const history = [10, 20, 0, 0];
+  const base = { memory: 2, decisionRule: 'utility', capacity: 10, agentCount: 100 };
+  assert.equal(G.currentPrediction(a, history, { ...base, recencyDecay: 1 }), 14); // errors tie 10 vs 10: later strategy kept
+  assert.equal(G.currentPrediction(a, history, base), 14); // option absent = 1
+  assert.equal(G.currentPrediction(a, history, { ...base, recencyDecay: 0.5 }), 10); // 0 + 0.5*10 beats 4 + 0.5*6
+  assert.throws(() => utilitySim({ recencyDecay: 0 }));
+});
+test('seed history: every slot has four shrunk weekday values; sparse slots are flagged', () => {
+  const rows = fs.readFileSync(path.join(root, 'netlogo/seed_history.csv'), 'utf8').trim().split(/\r?\n/).map(l => l.split(','));
+  const header = rows.shift();
+  for (const series of seed) assert.equal(series.length, 4);
+  const at = (row, name) => row[header.indexOf(name)];
+  assert.equal(at(rows[0], 'n_obs'), '0'); assert.equal(at(rows[0], 'filled'), 'True');
+  for (const row of rows) assert.equal(at(row, 'friday_scaled'), '');
+  // Capacity-anchored scale: no slot mean is implausibly far from the capacity scale.
+  assert(seed.every(s => s.mean > 5 && s.mean < 37));
+});
+test('seed values and real curve scale with N relative to the reference population', () => {
+  const text = fs.readFileSync(path.join(root, 'netlogo/seed_history.csv'), 'utf8').replace(/\r/g, '');
+  const [head, ...lines] = text.trim().split('\n'), refIndex = head.split(',').indexOf('reference_n');
+  const withRef = [head, ...lines.map(l => { const c = l.split(','); c[refIndex] = '200'; return c.join(','); })].join('\n');
+  const scaled = G.parseSeedHistory(withRef);
+  assert.equal(scaled.referenceN, 200);
+  const on = new G.Simulation(rules, scaled, { agentCount: 100, memory: 1 }), off = new G.Simulation(rules, scaled, { agentCount: 100, memory: 1, scaleSeedWithN: false });
+  assert.equal(on.seedFactor, 0.5); assert.equal(off.seedFactor, 1);
+  assert.equal(on.slotHistories[10][0], scaled[10][0] * 0.5); assert.equal(off.slotHistories[10][0], scaled[10][0]);
+  assert.equal(on.realProfile[10], scaled[10].mean * 0.5);
+});
+test('capacity can be set as a percentage of the population', () => {
+  assert.equal(utilitySim({ agentCount: 400, capacityFromRatio: true, capacityRatio: 9.25 }).options.capacity, 37);
+  assert.equal(utilitySim({ agentCount: 200, capacityFromRatio: true, capacityRatio: 9.25 }).options.capacity, 19);
+  assert.equal(utilitySim({ agentCount: 400, capacity: 50, capacityRatio: 9.25 }).options.capacity, 50); // switch off: slider value
+});
+test('demand-weighted profile mix allocates cells by largest remainder', () => {
+  const mix = G.parseProfileMix(fs.readFileSync(path.join(root, 'web/profile-mix.csv'), 'utf8'));
+  assert.equal(mix.length, 16); assert(Math.abs(mix.reduce((a, b) => a + b) - 1) < 1e-12);
+  assert.deepEqual(G.mixCellCounts([0.5, 0.3, 0.2], 7), [4, 2, 1]); // quotas 3.5, 2.1, 1.4
+  assert.deepEqual(G.mixCellCounts([0.25, 0.25, 0.25, 0.25], 6), [2, 2, 1, 1]); // tied remainders: lower cell first
+  const weightedRules = { ...rules, mix };
+  for (const N of [100, 377]) {
+    const counts = G.mixCellCounts(mix, N);
+    assert.equal(counts.reduce((a, b) => a + b), N);
+    const pop = new G.Simulation(weightedRules, seed, { agentCount: N, profileMix: 'demand-weighted', populationSeed: 5 }).agents;
+    assert.deepEqual(Array.from({ length: 16 }, (_, c) => pop.filter(a => a.availability * 4 + a.preference === c).length), counts);
+    assert.deepEqual([0, 1, 2, 3].map(f => pop.filter(a => a.flexibility === f).length), [0, 1, 2, 3].map(f => Math.floor(N / 4) + (f < N % 4 ? 1 : 0)));
+  }
+  const again = new G.Simulation(weightedRules, seed, { profileMix: 'demand-weighted', populationSeed: 5 }).profileExport().agents;
+  assert.deepEqual(new G.Simulation(weightedRules, seed, { profileMix: 'demand-weighted', populationSeed: 5 }).profileExport().agents, again);
+  assert.throws(() => new G.Simulation(rules, seed, { profileMix: 'demand-weighted' }));
 });

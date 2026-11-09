@@ -12,6 +12,38 @@ to load-profile-rules
   set preference-rules profile-rows rows "preference" 4
   set flexibility-rules profile-rows rows "flexibility" 4
   set crowding-rules profile-rows rows "crowding" 3
+  ;; Optional demand-weighted mix: cell = availability * 4 + preference, shares normalised to 1.
+  set mix-shares []
+  let mix-path ""
+  foreach [ "profile-mix.csv" "../web/profile-mix.csv" "web/profile-mix.csv" ] [ candidate ->
+    if mix-path = "" and file-exists? candidate [ set mix-path candidate ]
+  ]
+  if mix-path != "" [
+    let shares n-values 16 [ 0 ]
+    foreach but-first csv:from-file mix-path [ row ->
+      set shares replace-item (item 0 row * 4 + item 1 row) shares (item 2 row)
+    ]
+    let total sum shares
+    if total > 0 [ set mix-shares map [ s -> s / total ] shares ]
+  ]
+end
+
+;; Largest-remainder allocation of `total` agents to cells (ties: lower cell first).
+to-report mix-cell-counts [shares total]
+  let quotas map [ s -> s * total ] shares
+  let counts map [ q -> floor q ] quotas
+  let leftover total - sum counts
+  let order sort-by [ [a b] ->
+    (item a quotas - item a counts) > (item b quotas - item b counts)
+    or ((item a quotas - item a counts) = (item b quotas - item b counts) and a < b) ] (range length shares)
+  let i 0
+  while [ leftover > 0 ] [
+    let c item (i mod length order) order
+    set counts replace-item c counts (item c counts + 1)
+    set leftover leftover - 1
+    set i i + 1
+  ]
+  report counts
 end
 
 to-report profile-rows [rows kind expected-count]
@@ -49,17 +81,31 @@ end
 to build-profile-assignments
   set profile-rng (abs (int population-seed) mod 2147483646) + 1
   set model-rng (abs (int simulation-seed) mod 2147483646) + 1
-  let availability-values profile-shuffle (n-values n-agents [i -> i mod 4])
-  let flexibility-values profile-shuffle (n-values n-agents [i -> i mod 4])
   let crowd-offset (abs population-seed) mod 3
-  let crowding-values profile-shuffle (n-values n-agents [i -> (i + crowd-offset) mod 3])
+  let availability-values []
   let preference-values n-values n-agents [0]
-  foreach range 4 [ group ->
-    let members profile-shuffle (filter [i -> item i availability-values = group] (range n-agents))
-    let j 0
-    foreach members [ agent-id ->
-      set preference-values replace-item agent-id preference-values ((j + group) mod 4)
-      set j j + 1
+  let flexibility-values []
+  let crowding-values []
+  ifelse profile-mix = "demand-weighted" [
+    ;; Availability and preference drawn jointly from the demand-weighted mix.
+    if empty? mix-shares [ error "profile-mix demand-weighted needs web/profile-mix.csv" ]
+    let counts mix-cell-counts mix-shares n-agents
+    let cells profile-shuffle (reduce sentence (fput [] (map [ c -> n-values (item c counts) [ -> c ] ] (range length counts))))
+    set availability-values map [ c -> floor (c / 4) ] cells
+    set preference-values map [ c -> c mod 4 ] cells
+    set flexibility-values profile-shuffle (n-values n-agents [i -> i mod 4])
+    set crowding-values profile-shuffle (n-values n-agents [i -> (i + crowd-offset) mod 3])
+  ] [
+    set availability-values profile-shuffle (n-values n-agents [i -> i mod 4])
+    set flexibility-values profile-shuffle (n-values n-agents [i -> i mod 4])
+    set crowding-values profile-shuffle (n-values n-agents [i -> (i + crowd-offset) mod 3])
+    foreach range 4 [ group ->
+      let members profile-shuffle (filter [i -> item i availability-values = group] (range n-agents))
+      let j 0
+      foreach members [ agent-id ->
+        set preference-values replace-item agent-id preference-values ((j + group) mod 4)
+        set j j + 1
+      ]
     ]
   ]
   set profile-assignments n-values n-agents [i ->
@@ -157,8 +203,10 @@ to-report forecast-for [hist]
   foreach strategies [ the-strategy ->
     let score 0
     let week 1
+    let weight 1
     repeat memory-size [
-      set score score + abs (item (week - 1) hist - predict-attendance the-strategy sublist hist week (week + memory-size))
+      set score score + weight * abs (item (week - 1) hist - predict-attendance the-strategy sublist hist week (week + memory-size))
+      set weight weight * recency-decay
       set week week + 1
     ]
     if score <= best-score [

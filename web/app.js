@@ -154,8 +154,8 @@ window.addEventListener('resize', () => { if (simulation) drawChart(); });
   setStatus('Loading population rules');
   try {
     const fetchText = async path => { const response = await fetch(path); if (!response.ok) throw Error(`Cannot load ${path}`); return response.text(); };
-    const [ruleText, historyText] = await Promise.all([fetchText('profile-rules.csv'), fetchText('seed-history.csv')]);
-    rules = G.parseRules(ruleText); seedHistory = G.parseSeedHistory(historyText);
+    const [ruleText, historyText, mixText] = await Promise.all([fetchText('profile-rules.csv'), fetchText('seed-history.csv'), fetchText('profile-mix.csv')]);
+    rules = G.parseRules(ruleText); rules.mix = G.parseProfileMix(mixText); seedHistory = G.parseSeedHistory(historyText);
     $('reset').disabled = false; reset();
   } catch (error) { setStatus(`${error.message}. Run python web/server.py and open http://127.0.0.1:8000.`); }
 })();

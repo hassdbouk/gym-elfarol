@@ -75,12 +75,15 @@
   },
   "capacity_observed": 236,
   "peak_observed": 317,
-  "n_agents_unscaled": 634,
+  "n_agents_unscaled": 2169,
   "capacity_unscaled": 236,
-  "n_agents": 100,
+  "n_agents": 340,
+  "n_agents_source": "data/processed/calibration_n.json",
   "capacity": 37,
-  "scale_factor": 0.157729,
-  "scale_note": "n_agents=100 with occupancy scaled by 100/(2*peak), i.e. the unscaled population is 2 x peak count. Use capacity_unscaled and n_agents_unscaled to run in real head-count units.",
+  "scale_factor": 0.15678,
+  "scale_note": "Capacity-anchored: occupancy is scaled by 37/p95 so the model capacity equals the observed p95. n_agents is fitted by analysis/calibrate_n.js (info none) to the real share of slots over capacity.",
+  "seed_shrink_k": 5,
+  "seed_note": "Seed series are Mon-Thu weekday means. Each slot's pooled mean is shrunk toward its nearest observed neighbours, and each weekday mean toward the shrunk pooled mean: (n * mean + k * prior) / (n + k), k = 5. Slots with n_obs = 0 use the neighbour estimate alone.",
   "slots": [
     "06:30",
     "07:00",
@@ -456,31 +459,31 @@
       "08:00": null,
       "08:30": null,
       "09:00": null,
-      "09:30": 15.35,
+      "09:30": 15.26,
       "10:00": null,
-      "10:30": 19.29,
-      "11:00": 20.03,
-      "11:30": 20.28,
-      "12:00": 25.67,
-      "12:30": 23.26,
-      "13:00": 23.47,
-      "13:30": 25.29,
-      "14:00": 26.26,
-      "14:30": 30.17,
-      "15:00": 28.64,
-      "15:30": 32.11,
-      "16:00": 30.17,
-      "16:30": 37.59,
-      "17:00": 32.77,
-      "17:30": 35.07,
-      "18:00": 31.93,
-      "18:30": 33.34,
-      "19:00": 28.98,
-      "19:30": 28.1,
-      "20:00": 28.91,
-      "20:30": 31.48,
-      "21:00": 25.69,
-      "21:30": 27.42
+      "10:30": 19.18,
+      "11:00": 19.91,
+      "11:30": 20.16,
+      "12:00": 25.52,
+      "12:30": 23.12,
+      "13:00": 23.33,
+      "13:30": 25.14,
+      "14:00": 26.1,
+      "14:30": 29.98,
+      "15:00": 28.47,
+      "15:30": 31.92,
+      "16:00": 29.99,
+      "16:30": 37.37,
+      "17:00": 32.58,
+      "17:30": 34.86,
+      "18:00": 31.74,
+      "18:30": 33.14,
+      "19:00": 28.81,
+      "19:30": 27.93,
+      "20:00": 28.74,
+      "20:30": 31.29,
+      "21:00": 25.53,
+      "21:30": 27.26
     },
     "Tuesday": {
       "06:30": null,
@@ -488,31 +491,31 @@
       "07:30": null,
       "08:00": null,
       "08:30": null,
-      "09:00": 15.67,
+      "09:00": 15.57,
       "09:30": null,
-      "10:00": 17.16,
+      "10:00": 17.06,
       "10:30": null,
-      "11:00": 21.02,
-      "11:30": 24.57,
-      "12:00": 23.79,
+      "11:00": 20.89,
+      "11:30": 24.42,
+      "12:00": 23.64,
       "12:30": null,
-      "13:00": 23.5,
+      "13:00": 23.36,
       "13:30": null,
-      "14:00": 26.7,
+      "14:00": 26.53,
       "14:30": null,
-      "15:00": 22.99,
-      "15:30": 26.21,
-      "16:00": 25.99,
+      "15:00": 22.85,
+      "15:30": 26.06,
+      "16:00": 25.83,
       "16:30": null,
-      "17:00": 30.78,
+      "17:00": 30.59,
       "17:30": null,
-      "18:00": 27.07,
+      "18:00": 26.9,
       "18:30": null,
-      "19:00": 25.16,
-      "19:30": 24.55,
-      "20:00": 23.68,
-      "20:30": 28.44,
-      "21:00": 22.06,
+      "19:00": 25.01,
+      "19:30": 24.41,
+      "20:00": 23.53,
+      "20:30": 28.27,
+      "21:00": 21.93,
       "21:30": null
     },
     "Wednesday": {
@@ -521,64 +524,64 @@
       "07:30": null,
       "08:00": null,
       "08:30": null,
-      "09:00": 16.29,
+      "09:00": 16.19,
       "09:30": null,
       "10:00": null,
       "10:30": null,
-      "11:00": 17.19,
-      "11:30": 19.56,
-      "12:00": 17.59,
-      "12:30": 22.82,
-      "13:00": 20.22,
-      "13:30": 25.35,
-      "14:00": 24.57,
-      "14:30": 22.71,
-      "15:00": 19.97,
-      "15:30": 27.96,
-      "16:00": 24.5,
+      "11:00": 17.09,
+      "11:30": 19.44,
+      "12:00": 17.48,
+      "12:30": 22.69,
+      "13:00": 20.1,
+      "13:30": 25.2,
+      "14:00": 24.42,
+      "14:30": 22.58,
+      "15:00": 19.85,
+      "15:30": 27.8,
+      "16:00": 24.35,
       "16:30": null,
-      "17:00": 25.62,
-      "17:30": 25.62,
-      "18:00": 26.67,
+      "17:00": 25.47,
+      "17:30": 25.46,
+      "18:00": 26.51,
       "18:30": null,
-      "19:00": 27.84,
+      "19:00": 27.67,
       "19:30": null,
-      "20:00": 23.54,
-      "20:30": 22.24,
-      "21:00": 21.77,
+      "20:00": 23.39,
+      "20:30": 22.11,
+      "21:00": 21.64,
       "21:30": null
     },
     "Thursday": {
       "06:30": null,
-      "07:00": 7.89,
-      "07:30": 11.25,
+      "07:00": 7.84,
+      "07:30": 11.18,
       "08:00": null,
-      "08:30": 12.67,
-      "09:00": 12.78,
-      "09:30": 12.41,
-      "10:00": 15.69,
-      "10:30": 19.16,
-      "11:00": 18.77,
-      "11:30": 23.61,
-      "12:00": 21.65,
+      "08:30": 12.59,
+      "09:00": 12.7,
+      "09:30": 12.33,
+      "10:00": 15.6,
+      "10:30": 19.05,
+      "11:00": 18.66,
+      "11:30": 23.47,
+      "12:00": 21.52,
       "12:30": null,
-      "13:00": 25.73,
-      "13:30": 31.86,
-      "14:00": 28.47,
-      "14:30": 30.02,
-      "15:00": 31.61,
-      "15:30": 30.33,
-      "16:00": 29.35,
-      "16:30": 26.13,
-      "17:00": 27.46,
-      "17:30": 30.4,
-      "18:00": 27.16,
-      "18:30": 25.97,
-      "19:00": 23.31,
-      "19:30": 23.74,
-      "20:00": 21.77,
+      "13:00": 25.57,
+      "13:30": 31.67,
+      "14:00": 28.3,
+      "14:30": 29.84,
+      "15:00": 31.42,
+      "15:30": 30.15,
+      "16:00": 29.17,
+      "16:30": 25.97,
+      "17:00": 27.3,
+      "17:30": 30.22,
+      "18:00": 26.99,
+      "18:30": 25.82,
+      "19:00": 23.17,
+      "19:30": 23.6,
+      "20:00": 21.64,
       "20:30": null,
-      "21:00": 19.09,
+      "21:00": 18.97,
       "21:30": null
     },
     "Friday": {
@@ -587,27 +590,27 @@
       "07:30": null,
       "08:00": null,
       "08:30": null,
-      "09:00": 11.12,
-      "09:30": 12.38,
-      "10:00": 11.81,
-      "10:30": 17.35,
-      "11:00": 15.59,
-      "11:30": 21.7,
-      "12:00": 17.21,
+      "09:00": 11.05,
+      "09:30": 12.31,
+      "10:00": 11.74,
+      "10:30": 17.25,
+      "11:00": 15.49,
+      "11:30": 21.57,
+      "12:00": 17.11,
       "12:30": null,
-      "13:00": 20.19,
+      "13:00": 20.07,
       "13:30": null,
-      "14:00": 24.34,
+      "14:00": 24.2,
       "14:30": null,
-      "15:00": 22.51,
+      "15:00": 22.37,
       "15:30": null,
-      "16:00": 26.52,
+      "16:00": 26.36,
       "16:30": null,
-      "17:00": 25.75,
-      "17:30": 27.13,
-      "18:00": 24.42,
+      "17:00": 25.59,
+      "17:30": 26.97,
+      "18:00": 24.27,
       "18:30": null,
-      "19:00": 24.13,
+      "19:00": 23.99,
       "19:30": null,
       "20:00": null,
       "20:30": null,
@@ -621,218 +624,677 @@
       "mean_occupancy": 66.43,
       "n_obs": 0,
       "filled": true,
-      "mean_occupancy_scaled": 10.48
+      "mean_occupancy_scaled": 10.41,
+      "mean_occupancy_shrunk": 66.43,
+      "mean_occupancy_shrunk_scaled": 10.4146,
+      "weekday_shrunk_scaled": {
+        "Monday": 10.4146,
+        "Tuesday": 10.4146,
+        "Wednesday": 10.4146,
+        "Thursday": 10.4146
+      },
+      "weekday_n_obs": {
+        "Monday": 0,
+        "Tuesday": 0,
+        "Wednesday": 0,
+        "Thursday": 0
+      }
     },
     {
       "slot": "07:00",
       "mean_occupancy": 66.43,
       "n_obs": 7,
       "filled": false,
-      "mean_occupancy_scaled": 10.48
+      "mean_occupancy_scaled": 10.41,
+      "mean_occupancy_shrunk": 79.38,
+      "mean_occupancy_shrunk_scaled": 12.4444,
+      "weekday_shrunk_scaled": {
+        "Monday": 12.6964,
+        "Tuesday": 12.4444,
+        "Wednesday": 12.1364,
+        "Thursday": 10.7174
+      },
+      "weekday_n_obs": {
+        "Monday": 2,
+        "Tuesday": 0,
+        "Wednesday": 2,
+        "Thursday": 3
+      }
     },
     {
       "slot": "07:30",
       "mean_occupancy": 97.5,
       "n_obs": 6,
       "filled": false,
-      "mean_occupancy_scaled": 15.38
+      "mean_occupancy_scaled": 15.29,
+      "mean_occupancy_shrunk": 87.37,
+      "mean_occupancy_shrunk_scaled": 13.6979,
+      "weekday_shrunk_scaled": {
+        "Monday": 14.9947,
+        "Tuesday": 13.6979,
+        "Wednesday": 15.0251,
+        "Thursday": 12.755
+      },
+      "weekday_n_obs": {
+        "Monday": 1,
+        "Tuesday": 0,
+        "Wednesday": 2,
+        "Thursday": 3
+      }
     },
     {
       "slot": "08:00",
       "mean_occupancy": 84.0,
       "n_obs": 6,
       "filled": false,
-      "mean_occupancy_scaled": 13.25
+      "mean_occupancy_scaled": 13.17,
+      "mean_occupancy_shrunk": 87.56,
+      "mean_occupancy_shrunk_scaled": 13.7277,
+      "weekday_shrunk_scaled": {
+        "Monday": 13.9744,
+        "Tuesday": 14.0789,
+        "Wednesday": 13.7922,
+        "Thursday": 12.6723
+      },
+      "weekday_n_obs": {
+        "Monday": 1,
+        "Tuesday": 1,
+        "Wednesday": 2,
+        "Thursday": 2
+      }
     },
     {
       "slot": "08:30",
       "mean_occupancy": 86.17,
       "n_obs": 6,
       "filled": false,
-      "mean_occupancy_scaled": 13.59
+      "mean_occupancy_scaled": 13.51,
+      "mean_occupancy_shrunk": 87.87,
+      "mean_occupancy_shrunk_scaled": 13.7764,
+      "weekday_shrunk_scaled": {
+        "Monday": 13.5446,
+        "Tuesday": 14.224,
+        "Wednesday": 13.8843,
+        "Thursday": 13.3332
+      },
+      "weekday_n_obs": {
+        "Monday": 1,
+        "Tuesday": 1,
+        "Wednesday": 1,
+        "Thursday": 3
+      }
     },
     {
       "slot": "09:00",
       "mean_occupancy": 95.83,
       "n_obs": 12,
       "filled": false,
-      "mean_occupancy_scaled": 15.12
+      "mean_occupancy_scaled": 15.02,
+      "mean_occupancy_shrunk": 93.54,
+      "mean_occupancy_shrunk_scaled": 14.665,
+      "weekday_shrunk_scaled": {
+        "Monday": 14.8649,
+        "Tuesday": 15.0057,
+        "Wednesday": 15.3417,
+        "Thursday": 13.9278
+      },
+      "weekday_n_obs": {
+        "Monday": 2,
+        "Tuesday": 3,
+        "Wednesday": 4,
+        "Thursday": 3
+      }
     },
     {
       "slot": "09:30",
       "mean_occupancy": 89.9,
       "n_obs": 10,
       "filled": false,
-      "mean_occupancy_scaled": 14.18
+      "mean_occupancy_scaled": 14.09,
+      "mean_occupancy_shrunk": 93.11,
+      "mean_occupancy_shrunk_scaled": 14.598,
+      "weekday_shrunk_scaled": {
+        "Monday": 14.8462,
+        "Tuesday": 14.7498,
+        "Wednesday": 14.4138,
+        "Thursday": 13.7487
+      },
+      "weekday_n_obs": {
+        "Monday": 3,
+        "Tuesday": 2,
+        "Wednesday": 2,
+        "Thursday": 3
+      }
     },
     {
       "slot": "10:00",
       "mean_occupancy": 103.24,
       "n_obs": 17,
       "filled": false,
-      "mean_occupancy_scaled": 16.28
+      "mean_occupancy_scaled": 16.19,
+      "mean_occupancy_shrunk": 103.8,
+      "mean_occupancy_shrunk_scaled": 16.2745,
+      "weekday_shrunk_scaled": {
+        "Monday": 17.3583,
+        "Tuesday": 16.6661,
+        "Wednesday": 15.1858,
+        "Thursday": 15.8592
+      },
+      "weekday_n_obs": {
+        "Monday": 2,
+        "Tuesday": 5,
+        "Wednesday": 2,
+        "Thursday": 8
+      }
     },
     {
       "slot": "10:30",
       "mean_occupancy": 121.58,
       "n_obs": 12,
       "filled": false,
-      "mean_occupancy_scaled": 19.18
+      "mean_occupancy_scaled": 19.06,
+      "mean_occupancy_shrunk": 118.97,
+      "mean_occupancy_shrunk_scaled": 18.6527,
+      "weekday_shrunk_scaled": {
+        "Monday": 18.94,
+        "Tuesday": 18.6763,
+        "Wednesday": 18.6527,
+        "Thursday": 18.8287
+      },
+      "weekday_n_obs": {
+        "Monday": 6,
+        "Tuesday": 2,
+        "Wednesday": 0,
+        "Thursday": 4
+      }
     },
     {
       "slot": "11:00",
       "mean_occupancy": 122.19,
       "n_obs": 16,
       "filled": false,
-      "mean_occupancy_scaled": 19.27
+      "mean_occupancy_scaled": 19.16,
+      "mean_occupancy_shrunk": 124.02,
+      "mean_occupancy_shrunk_scaled": 19.4439,
+      "weekday_shrunk_scaled": {
+        "Monday": 19.619,
+        "Tuesday": 20.087,
+        "Wednesday": 18.5608,
+        "Thursday": 19.0145
+      },
+      "weekday_n_obs": {
+        "Monday": 3,
+        "Tuesday": 4,
+        "Wednesday": 3,
+        "Thursday": 6
+      }
     },
     {
       "slot": "11:30",
       "mean_occupancy": 138.19,
       "n_obs": 16,
       "filled": false,
-      "mean_occupancy_scaled": 21.8
+      "mean_occupancy_scaled": 21.67,
+      "mean_occupancy_shrunk": 136.55,
+      "mean_occupancy_shrunk_scaled": 21.4082,
+      "weekday_shrunk_scaled": {
+        "Monday": 20.785,
+        "Tuesday": 22.7461,
+        "Wednesday": 20.5337,
+        "Thursday": 22.1794
+      },
+      "weekday_n_obs": {
+        "Monday": 5,
+        "Tuesday": 4,
+        "Wednesday": 4,
+        "Thursday": 3
+      }
     },
     {
       "slot": "12:00",
       "mean_occupancy": 140.43,
       "n_obs": 21,
       "filled": false,
-      "mean_occupancy_scaled": 22.15
+      "mean_occupancy_scaled": 22.02,
+      "mean_occupancy_shrunk": 141.28,
+      "mean_occupancy_shrunk_scaled": 22.15,
+      "weekday_shrunk_scaled": {
+        "Monday": 23.6459,
+        "Tuesday": 22.8962,
+        "Wednesday": 20.0748,
+        "Thursday": 21.7611
+      },
+      "weekday_n_obs": {
+        "Monday": 4,
+        "Tuesday": 5,
+        "Wednesday": 4,
+        "Thursday": 8
+      }
     },
     {
       "slot": "12:30",
       "mean_occupancy": 151.53,
       "n_obs": 15,
       "filled": false,
-      "mean_occupancy_scaled": 23.9
+      "mean_occupancy_scaled": 23.76,
+      "mean_occupancy_shrunk": 149.87,
+      "mean_occupancy_shrunk_scaled": 23.4969,
+      "weekday_shrunk_scaled": {
+        "Monday": 23.3316,
+        "Tuesday": 24.8017,
+        "Wednesday": 23.0252,
+        "Thursday": 23.7714
+      },
+      "weekday_n_obs": {
+        "Monday": 4,
+        "Tuesday": 2,
+        "Wednesday": 7,
+        "Thursday": 2
+      }
     },
     {
       "slot": "13:00",
       "mean_occupancy": 149.35,
       "n_obs": 23,
       "filled": false,
-      "mean_occupancy_scaled": 23.56
+      "mean_occupancy_scaled": 23.42,
+      "mean_occupancy_shrunk": 151.78,
+      "mean_occupancy_shrunk_scaled": 23.7965,
+      "weekday_shrunk_scaled": {
+        "Monday": 23.5627,
+        "Tuesday": 23.5783,
+        "Wednesday": 21.9478,
+        "Thursday": 24.8908
+      },
+      "weekday_n_obs": {
+        "Monday": 5,
+        "Tuesday": 5,
+        "Wednesday": 5,
+        "Thursday": 8
+      }
     },
     {
       "slot": "13:30",
       "mean_occupancy": 174.44,
       "n_obs": 16,
       "filled": false,
-      "mean_occupancy_scaled": 27.51
+      "mean_occupancy_scaled": 27.35,
+      "mean_occupancy_shrunk": 170.85,
+      "mean_occupancy_shrunk_scaled": 26.7853,
+      "weekday_shrunk_scaled": {
+        "Monday": 26.1672,
+        "Tuesday": 27.9651,
+        "Wednesday": 25.8112,
+        "Thursday": 28.956
+      },
+      "weekday_n_obs": {
+        "Monday": 3,
+        "Tuesday": 1,
+        "Wednesday": 8,
+        "Thursday": 4
+      }
     },
     {
       "slot": "14:00",
       "mean_occupancy": 169.36,
       "n_obs": 22,
       "filled": false,
-      "mean_occupancy_scaled": 26.71
+      "mean_occupancy_scaled": 26.55,
+      "mean_occupancy_shrunk": 169.45,
+      "mean_occupancy_shrunk_scaled": 26.5667,
+      "weekday_shrunk_scaled": {
+        "Monday": 26.361,
+        "Tuesday": 26.5472,
+        "Wednesday": 25.6119,
+        "Thursday": 27.5114
+      },
+      "weekday_n_obs": {
+        "Monday": 4,
+        "Tuesday": 8,
+        "Wednesday": 4,
+        "Thursday": 6
+      }
     },
     {
       "slot": "14:30",
       "mean_occupancy": 165.25,
       "n_obs": 16,
       "filled": false,
-      "mean_occupancy_scaled": 26.06
+      "mean_occupancy_scaled": 25.91,
+      "mean_occupancy_shrunk": 166.35,
+      "mean_occupancy_shrunk_scaled": 26.081,
+      "weekday_shrunk_scaled": {
+        "Monday": 27.8157,
+        "Tuesday": 25.3484,
+        "Wednesday": 24.0366,
+        "Thursday": 27.4908
+      },
+      "weekday_n_obs": {
+        "Monday": 4,
+        "Tuesday": 2,
+        "Wednesday": 7,
+        "Thursday": 3
+      }
     },
     {
       "slot": "15:00",
       "mean_occupancy": 170.42,
       "n_obs": 24,
       "filled": false,
-      "mean_occupancy_scaled": 26.88
+      "mean_occupancy_scaled": 26.72,
+      "mean_occupancy_shrunk": 171.21,
+      "mean_occupancy_shrunk_scaled": 26.8429,
+      "weekday_shrunk_scaled": {
+        "Monday": 27.7901,
+        "Tuesday": 25.0686,
+        "Wednesday": 23.3456,
+        "Thursday": 29.6563
+      },
+      "weekday_n_obs": {
+        "Monday": 7,
+        "Tuesday": 4,
+        "Wednesday": 5,
+        "Thursday": 8
+      }
     },
     {
       "slot": "15:30",
       "mean_occupancy": 184.83,
       "n_obs": 24,
       "filled": false,
-      "mean_occupancy_scaled": 29.15
+      "mean_occupancy_scaled": 28.98,
+      "mean_occupancy_shrunk": 182.94,
+      "mean_occupancy_shrunk_scaled": 28.6818,
+      "weekday_shrunk_scaled": {
+        "Monday": 30.3011,
+        "Tuesday": 27.3693,
+        "Wednesday": 28.1644,
+        "Thursday": 29.5362
+      },
+      "weekday_n_obs": {
+        "Monday": 5,
+        "Tuesday": 5,
+        "Wednesday": 7,
+        "Thursday": 7
+      }
     },
     {
       "slot": "16:00",
       "mean_occupancy": 177.32,
       "n_obs": 37,
       "filled": false,
-      "mean_occupancy_scaled": 27.97
+      "mean_occupancy_scaled": 27.8,
+      "mean_occupancy_shrunk": 178.76,
+      "mean_occupancy_shrunk_scaled": 28.0254,
+      "weekday_shrunk_scaled": {
+        "Monday": 29.3364,
+        "Tuesday": 26.6165,
+        "Wednesday": 26.0223,
+        "Thursday": 28.8362
+      },
+      "weekday_n_obs": {
+        "Monday": 10,
+        "Tuesday": 9,
+        "Wednesday": 6,
+        "Thursday": 12
+      }
     },
     {
       "slot": "16:30",
       "mean_occupancy": 193.88,
       "n_obs": 8,
       "filled": false,
-      "mean_occupancy_scaled": 30.58
+      "mean_occupancy_scaled": 30.4,
+      "mean_occupancy_shrunk": 190.05,
+      "mean_occupancy_shrunk_scaled": 29.7952,
+      "weekday_shrunk_scaled": {
+        "Monday": 32.6342,
+        "Tuesday": 28.8749,
+        "Wednesday": 29.7952,
+        "Thursday": 28.362
+      },
+      "weekday_n_obs": {
+        "Monday": 3,
+        "Tuesday": 2,
+        "Wednesday": 0,
+        "Thursday": 3
+      }
     },
     {
       "slot": "17:00",
       "mean_occupancy": 190.51,
       "n_obs": 43,
       "filled": false,
-      "mean_occupancy_scaled": 30.05
+      "mean_occupancy_scaled": 29.87,
+      "mean_occupancy_shrunk": 191.11,
+      "mean_occupancy_shrunk_scaled": 29.9616,
+      "weekday_shrunk_scaled": {
+        "Monday": 32.0322,
+        "Tuesday": 30.3307,
+        "Wednesday": 27.3389,
+        "Thursday": 28.1841
+      },
+      "weekday_n_obs": {
+        "Monday": 19,
+        "Tuesday": 7,
+        "Wednesday": 7,
+        "Thursday": 10
+      }
     },
     {
       "slot": "17:30",
       "mean_occupancy": 198.56,
       "n_obs": 16,
       "filled": false,
-      "mean_occupancy_scaled": 31.32
+      "mean_occupancy_scaled": 31.13,
+      "mean_occupancy_shrunk": 195.71,
+      "mean_occupancy_shrunk_scaled": 30.6826,
+      "weekday_shrunk_scaled": {
+        "Monday": 32.9597,
+        "Tuesday": 32.3626,
+        "Wednesday": 28.0718,
+        "Thursday": 30.4767
+      },
+      "weekday_n_obs": {
+        "Monday": 6,
+        "Tuesday": 1,
+        "Wednesday": 5,
+        "Thursday": 4
+      }
     },
     {
       "slot": "18:00",
       "mean_occupancy": 182.61,
       "n_obs": 49,
       "filled": false,
-      "mean_occupancy_scaled": 28.8
+      "mean_occupancy_scaled": 28.63,
+      "mean_occupancy_shrunk": 183.34,
+      "mean_occupancy_shrunk_scaled": 28.7446,
+      "weekday_shrunk_scaled": {
+        "Monday": 31.0882,
+        "Tuesday": 27.5171,
+        "Wednesday": 27.3101,
+        "Thursday": 27.5076
+      },
+      "weekday_n_obs": {
+        "Monday": 18,
+        "Tuesday": 10,
+        "Wednesday": 9,
+        "Thursday": 12
+      }
     },
     {
       "slot": "18:30",
       "mean_occupancy": 182.46,
       "n_obs": 13,
       "filled": false,
-      "mean_occupancy_scaled": 28.78
+      "mean_occupancy_scaled": 28.61,
+      "mean_occupancy_shrunk": 180.67,
+      "mean_occupancy_shrunk_scaled": 28.3252,
+      "weekday_shrunk_scaled": {
+        "Monday": 30.7342,
+        "Tuesday": 28.3252,
+        "Wednesday": 27.5561,
+        "Thursday": 26.9568
+      },
+      "weekday_n_obs": {
+        "Monday": 5,
+        "Tuesday": 0,
+        "Wednesday": 2,
+        "Thursday": 6
+      }
     },
     {
       "slot": "19:00",
       "mean_occupancy": 169.4,
       "n_obs": 47,
       "filled": false,
-      "mean_occupancy_scaled": 26.72
+      "mean_occupancy_scaled": 26.56,
+      "mean_occupancy_shrunk": 169.75,
+      "mean_occupancy_shrunk_scaled": 26.6135,
+      "weekday_shrunk_scaled": {
+        "Monday": 28.3112,
+        "Tuesday": 25.5421,
+        "Wednesday": 27.3189,
+        "Thursday": 24.3192
+      },
+      "weekday_n_obs": {
+        "Monday": 17,
+        "Tuesday": 10,
+        "Wednesday": 10,
+        "Thursday": 10
+      }
     },
     {
       "slot": "19:30",
       "mean_occupancy": 163.56,
       "n_obs": 16,
       "filled": false,
-      "mean_occupancy_scaled": 25.8
+      "mean_occupancy_scaled": 25.64,
+      "mean_occupancy_shrunk": 163.35,
+      "mean_occupancy_shrunk_scaled": 25.6096,
+      "weekday_shrunk_scaled": {
+        "Monday": 26.9627,
+        "Tuesday": 25.158,
+        "Wednesday": 25.6096,
+        "Thursday": 24.5109
+      },
+      "weekday_n_obs": {
+        "Monday": 7,
+        "Tuesday": 3,
+        "Wednesday": 0,
+        "Thursday": 6
+      }
     },
     {
       "slot": "20:00",
       "mean_occupancy": 155.92,
       "n_obs": 37,
       "filled": false,
-      "mean_occupancy_scaled": 24.59
+      "mean_occupancy_scaled": 24.45,
+      "mean_occupancy_shrunk": 157.23,
+      "mean_occupancy_shrunk_scaled": 24.6512,
+      "weekday_shrunk_scaled": {
+        "Monday": 27.3756,
+        "Tuesday": 23.9333,
+        "Wednesday": 23.8437,
+        "Thursday": 22.7126
+      },
+      "weekday_n_obs": {
+        "Monday": 10,
+        "Tuesday": 9,
+        "Wednesday": 9,
+        "Thursday": 9
+      }
     },
     {
       "slot": "20:30",
       "mean_occupancy": 170.38,
       "n_obs": 13,
       "filled": false,
-      "mean_occupancy_scaled": 26.87
+      "mean_occupancy_scaled": 26.71,
+      "mean_occupancy_shrunk": 164.7,
+      "mean_occupancy_shrunk_scaled": 25.822,
+      "weekday_shrunk_scaled": {
+        "Monday": 28.5576,
+        "Tuesday": 26.741,
+        "Wednesday": 24.4285,
+        "Thursday": 24.1108
+      },
+      "weekday_n_obs": {
+        "Monday": 5,
+        "Tuesday": 3,
+        "Wednesday": 3,
+        "Thursday": 2
+      }
     },
     {
       "slot": "21:00",
       "mean_occupancy": 143.94,
       "n_obs": 34,
       "filled": false,
-      "mean_occupancy_scaled": 22.7
+      "mean_occupancy_scaled": 22.57,
+      "mean_occupancy_shrunk": 147.07,
+      "mean_occupancy_shrunk_scaled": 23.0572,
+      "weekday_shrunk_scaled": {
+        "Monday": 24.8438,
+        "Tuesday": 22.3633,
+        "Wednesday": 22.3464,
+        "Thursday": 20.5422
+      },
+      "weekday_n_obs": {
+        "Monday": 13,
+        "Tuesday": 8,
+        "Wednesday": 5,
+        "Thursday": 8
+      }
     },
     {
       "slot": "21:30",
       "mean_occupancy": 166.27,
       "n_obs": 11,
       "filled": false,
-      "mean_occupancy_scaled": 26.23
+      "mean_occupancy_scaled": 26.07,
+      "mean_occupancy_shrunk": 159.29,
+      "mean_occupancy_shrunk_scaled": 24.9741,
+      "weekday_shrunk_scaled": {
+        "Monday": 26.3059,
+        "Tuesday": 25.8026,
+        "Wednesday": 24.5802,
+        "Thursday": 23.9473
+      },
+      "weekday_n_obs": {
+        "Monday": 7,
+        "Tuesday": 1,
+        "Wednesday": 2,
+        "Thursday": 1
+      }
     }
   ],
-  "validation_targets": "data/processed/validation_targets.json"
+  "validation_targets": "data/processed/validation_targets.json",
+  "profile_mix": {
+    "file": "web/profile-mix.csv",
+    "method": "NNLS fit of availability x preference cell shares to the shrunk real curve shape (uniform start choice within each cell), ridge toward balanced shares",
+    "shares": [
+      0.025594,
+      0.041027,
+      0.00882,
+      0.036278,
+      0.0,
+      0.085733,
+      0.107051,
+      0.076355,
+      0.091591,
+      0.100378,
+      0.184484,
+      0.134932,
+      0.009985,
+      0.0,
+      0.097771,
+      0.0
+    ],
+    "ridge": 0.03,
+    "relative_rmse_balanced": 0.3592,
+    "relative_rmse_fitted": 0.1445
+  }
 }

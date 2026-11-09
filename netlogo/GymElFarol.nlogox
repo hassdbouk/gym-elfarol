@@ -46,6 +46,8 @@ globals [
   n-structural-skips    ;; skips by agents with no allowed start
   availability-rules preference-rules flexibility-rules crowding-rules
   profile-rng model-rng profile-assignments
+  mix-shares            ;; demand-weighted availability x preference shares (web/profile-mix.csv)
+  seed-reference-n      ;; population the seed values correspond to (0 = not calibrated)
 ]
 
 turtles-own [
@@ -68,6 +70,8 @@ turtles-own [
 
 to setup
   clear-all
+  ;; Optional: capacity as a percentage of the population, so changing N keeps the ratio.
+  if capacity-from-ratio? [ set capacity max (list 1 round (capacity-ratio * n-agents / 100)) ]
   set-default-shape turtles "person"
   set n-slots 31
   set slot-labels n-values n-slots [ i -> slot-label-at i ]
@@ -100,7 +104,10 @@ to setup
   build-profile-assignments
   random-seed simulation-seed
   load-seed-means
-  set slot-histories map [ m -> make-slot-history m ] seed-means
+  ;; Seeds (and the real curve) are in units of seed-reference-n agents; rescale to n-agents.
+  let seed-factor ifelse-value (scale-seed-with-n? and seed-reference-n > 0) [ n-agents / seed-reference-n ] [ 1 ]
+  set slot-histories map [ m -> make-slot-history (map [ v -> v * seed-factor ] m) ] seed-means
+  set real-profile map [ v -> v * seed-factor ] real-profile
   set history first slot-histories
 
   ask patch (0.75 * max-pxcor) (0.50 * max-pycor) [
@@ -324,8 +331,9 @@ end
 ;; successive "past days" cycled into that slot's memory.
 to load-seed-means
   ;; fallback = scaled weekday-pooled means from params.json seed_history
-  set seed-means map [ m -> (list m) ] [ 10.48 10.48 15.38 13.25 13.59 15.12 14.18 16.28 19.18 19.27 21.80 22.15 23.90 23.56 27.51 26.71 26.06 26.88 29.15 27.97 30.58 30.05 31.32 28.80 28.78 26.72 25.80 24.59 26.87 22.70 26.23 ]
+  set seed-means map [ m -> (list m) ] [ 10.41 12.44 13.70 13.73 13.78 14.66 14.60 16.27 18.65 19.44 21.41 22.15 23.50 23.80 26.79 26.57 26.08 26.84 28.68 28.03 29.80 29.96 30.68 28.74 28.33 26.61 25.61 24.65 25.82 23.06 24.97 ]
   set real-profile map [ s -> mean s ] seed-means
+  set seed-reference-n 0
   let path seed-file-path
   if path = "" [ stop ]
   let rows csv:from-file path
@@ -333,6 +341,11 @@ to load-seed-means
   let header first rows
   let mean-col position "mean_occupancy_scaled" header
   if not is-number? mean-col [ stop ]
+  let ref-col position "reference_n" header
+  if is-number? ref-col and length item 1 rows > ref-col [
+    let ref coerce-number-or-none item ref-col item 1 rows
+    if is-number? ref and ref > 0 [ set seed-reference-n ref ]
+  ]
   let weekday-cols []
   foreach [ "monday_scaled" "tuesday_scaled" "wednesday_scaled" "thursday_scaled" "friday_scaled" ] [ name ->
     let col position name header
@@ -531,9 +544,11 @@ to update-strategies
   foreach strategies [ the-strategy ->
     let score 0
     let week 1
+    let weight 1  ;; gym extension: recency-decay ^ (week - 1), 1 = original equal weighting
     repeat memory-size [
       set prediction predict-attendance the-strategy sublist history week (week + memory-size)
-      set score score + abs (item (week - 1) history - prediction)
+      set score score + weight * abs (item (week - 1) history - prediction)
+      set weight weight * recency-decay
       set week week + 1
     ]
     if (score <= best-score) [
@@ -589,12 +604,12 @@ end
 ]]></code>
   <widgets>
     <view x="300" wrappingAllowedX="true" y="10" frameRate="30.0" minPycor="-17" height="424" showTickCounter="true" patchSize="12.0" fontSize="14" wrappingAllowedY="true" width="424" tickCounterLabel="ticks" maxPycor="17" updateMode="1" maxPxcor="17" minPxcor="-17"></view>
-    <slider x="10" step="1" y="10" max="200" width="270" display="n-agents" height="50" min="10" direction="Horizontal" default="100.0" variable="n-agents"></slider>
+    <slider x="10" step="1" y="10" max="1000" width="270" display="n-agents" height="50" min="10" direction="Horizontal" default="340.0" variable="n-agents"></slider>
     <slider x="10" step="1" y="60" max="100" width="270" display="capacity" height="50" min="1" direction="Horizontal" default="37.0" variable="capacity"></slider>
     <slider x="10" step="1" y="110" max="10" width="270" display="memory-size" height="50" min="1" direction="Horizontal" default="5.0" variable="memory-size"></slider>
     <slider x="10" step="1" y="160" max="20" width="270" display="number-strategies" height="50" min="1" direction="Horizontal" default="10.0" variable="number-strategies"></slider>
     <slider x="10" step="1" y="210" max="6" width="270" display="delay" height="50" min="1" direction="Horizontal" default="2.0" variable="delay"></slider>
-    <slider x="10" step="1" y="260" max="20" width="270" display="burn-in-days" height="50" min="0" direction="Horizontal" default="10.0" variable="burn-in-days"></slider>
+    <slider x="10" step="1" y="260" max="20" width="270" display="burn-in-days" height="50" min="0" direction="Horizontal" default="20.0" variable="burn-in-days"></slider>
     <chooser x="10" y="310" height="60" variable="info-mode" current="0" width="270" display="info-mode">
       <choice type="string" value="none"></choice>
       <choice type="string" value="live"></choice>
@@ -667,6 +682,14 @@ plotxy plot-x-max capacity</update>
     <slider x="1225" step="0.05" y="340" max="1" width="190" display="learning-rate" height="50" min="0" direction="Horizontal" default="0.2" variable="learning-rate"></slider>
     <slider x="1225" step="0.05" y="395" max="2" width="190" display="learning-weight" height="50" min="0" direction="Horizontal" default="0.5" variable="learning-weight"></slider>
     <switch x="1225" y="450" height="40" on="false" variable="outcome-learning?" width="190" display="outcome-learning?"></switch>
+    <slider x="1225" step="0.05" y="495" max="1" width="190" display="recency-decay" height="50" min="0.05" direction="Horizontal" default="1.0" variable="recency-decay"></slider>
+    <switch x="1225" y="550" height="40" on="true" variable="scale-seed-with-n?" width="190" display="scale-seed-with-n?"></switch>
+    <switch x="1225" y="595" height="40" on="false" variable="capacity-from-ratio?" width="190" display="capacity-from-ratio?"></switch>
+    <slider x="1225" step="0.01" y="640" max="50" width="190" display="capacity-ratio" height="50" min="1" direction="Horizontal" default="10.88" variable="capacity-ratio"></slider>
+    <chooser x="1225" y="695" height="60" variable="profile-mix" current="0" width="190" display="profile-mix">
+      <choice type="string" value="balanced"></choice>
+      <choice type="string" value="demand-weighted"></choice>
+    </chooser>
   </widgets>
   <info><![CDATA[
 # Individual gym schedules and preferences

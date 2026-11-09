@@ -6,8 +6,14 @@ coefficient of variation, lag-1 autocorrelation), and
 `netlogo/seed_history.csv` for the Gym El Farol csv extension.
 
 Capacity fallback is the 95th percentile of observed 3WR+4WR counts: posted
-Rec Services capacities are not in the repo yet. Agent count is 100, with
-occupancy scaled so that N = 2 x peak in real units.
+Rec Services capacities are not in the repo yet. Occupancy is scaled so the
+model capacity of 37 equals that p95 (scale = 37 / p95). The population size
+N is fitted separately by analysis/calibrate_n.js and read back from
+data/processed/calibration_n.json when present.
+
+Seed history: each slot's pooled Mon-Thu mean is shrunk toward its neighbouring
+slots, and each weekday mean toward the shrunk pooled mean, by observation count
+(prior strength SHRINK_K), so sparse slots lean on their neighbours openly.
 
     python analysis/calibrate.py
     python analysis/calibrate.py --self-test
@@ -33,9 +39,21 @@ TARGETS_PATH = ROOT / "data" / "processed" / "validation_targets.json"
 DEMAND_CSV_PATH = ROOT / "data" / "processed" / "demand_curve.csv"
 SEED_CSV_PATH = ROOT / "netlogo" / "seed_history.csv"
 LOG_PATH = ROOT / "data" / "processed" / "calibrate.log"
+CALIBRATION_N_PATH = ROOT / "data" / "processed" / "calibration_n.json"
+RULES_PATH = ROOT / "web" / "profile-rules.csv"
+MIX_PATH = ROOT / "web" / "profile-mix.csv"
 
 TZ_NAME = "America/Toronto"
-N_AGENTS = 100
+# Model capacity in agents; real counts are scaled so that the observed p95 maps to it.
+CAPACITY_MODEL = 37
+# Population used before calibrate_n.js has written calibration_n.json.
+N_AGENTS_FALLBACK = 100
+# Prior strength (in observations) for shrinking sparse slot and weekday means.
+SHRINK_K = 5
+# Ridge strength pulling the demand-weighted profile mix toward balanced shares. Without it
+# the fit puts ~93% of agents in the all-day group; 0.03 keeps every availability group
+# at >= 11% while cutting the curve-shape error by about 60% versus balanced.
+MIX_RIDGE = 0.03
 SLOT_START = time(6, 30)
 SLOT_END = time(22, 0)
 SLOT_MINUTES = 30
@@ -119,10 +137,62 @@ def demand_sample(frame: pd.DataFrame) -> pd.DataFrame:
     return regular_term(evening_window(frame, WEEKDAYS)).dropna(subset=["count_fitness"])
 
 
-def scale_occupancy(value: float, peak: float) -> float:
-    if peak <= 0:
+def scale_occupancy(value: float, p95: float) -> float:
+    """Real head-count -> model agents, anchored so that p95 equals CAPACITY_MODEL."""
+    if p95 <= 0:
         return 0.0
-    return value * N_AGENTS / (2.0 * peak)
+    return value * CAPACITY_MODEL / p95
+
+
+def calibrated_n() -> tuple[int, str]:
+    """Population size from calibrate_n.js, or the fallback before calibration."""
+    if CALIBRATION_N_PATH.exists():
+        data = json.loads(CALIBRATION_N_PATH.read_text(encoding="utf-8"))
+        return int(data["chosen_n"]), str(CALIBRATION_N_PATH.relative_to(ROOT)).replace("\\", "/")
+    return N_AGENTS_FALLBACK, "fallback (calibrate_n.js not yet run)"
+
+
+def neighbour_estimate(means: list[float | None], index: int) -> float | None:
+    """Mean of the nearest observed slot on each side (both sides when available)."""
+    found = []
+    for step in (-1, 1):
+        j = index + step
+        while 0 <= j < len(means):
+            if means[j] is not None:
+                found.append(means[j])
+                break
+            j += step
+    return float(np.mean(found)) if found else None
+
+
+def shrink(mean: float | None, n: int, prior: float | None, k: float = SHRINK_K) -> float | None:
+    """(n * mean + k * prior) / (n + k); the prior alone when n = 0."""
+    if prior is None:
+        return mean
+    if n <= 0 or mean is None:
+        return prior
+    return (n * mean + k * prior) / (n + k)
+
+
+def shrunk_seed(sample: pd.DataFrame) -> list[dict[str, Any]]:
+    """Per-slot pooled and Mon-Thu weekday means, shrunk by observation count."""
+    labels = slot_labels()
+    pooled = sample.groupby("slot_label")["count_fitness"].agg(["mean", "size"])
+    by_day = sample.groupby(["dow", "slot_label"])["count_fitness"].agg(["mean", "size"])
+    raw = [float(pooled.loc[l, "mean"]) if l in pooled.index else None for l in labels]
+    rows = []
+    for i, label in enumerate(labels):
+        n = int(pooled.loc[label, "size"]) if label in pooled.index else 0
+        neighbour = neighbour_estimate(raw, i)
+        pooled_shrunk = shrink(raw[i], n, neighbour)
+        row = {"slot": label, "n_obs": n, "raw_mean": raw[i], "neighbour_mean": neighbour, "shrunk_mean": pooled_shrunk, "days": {}}
+        for day in FULL_WINDOW_DAYS:
+            key = (day, label)
+            n_day = int(by_day.loc[key, "size"]) if key in by_day.index else 0
+            day_mean = float(by_day.loc[key, "mean"]) if key in by_day.index else None
+            row["days"][day] = {"n": n_day, "raw": day_mean, "shrunk": shrink(day_mean, n_day, pooled_shrunk)}
+        rows.append(row)
+    return rows
 
 
 def demand_curve(sample: pd.DataFrame) -> tuple[dict[str, dict[str, float | None]], dict[str, dict[str, int]]]:
@@ -220,26 +290,104 @@ def coefficient_of_variation(values: pd.Series) -> float | None:
     return round(float(values.std(ddof=1) / mean), 4)
 
 
+def load_profile_rules(path: Path = RULES_PATH) -> dict[str, list[dict[str, Any]]]:
+    rules: dict[str, list[dict[str, Any]]] = {}
+    for row in pd.read_csv(path).to_dict("records"):
+        rules.setdefault(row["kind"], []).append(row)
+    for rows in rules.values():
+        rows.sort(key=lambda r: r["id"])
+    return rules
+
+
+def allowed_starts(availability: int, preference: int, flexibility: int, rules: dict, duration: int = 2) -> list[int]:
+    """Python copy of allowedStarts in web/simulation.js (used only for the mix fit)."""
+    pref = rules["preference"][preference]
+    avail = rules["availability"][availability]
+    flex = rules["flexibility"][flexibility]["value"]
+    windows = [(avail["start1"], avail["end1"])] + ([(avail["start2"], avail["end2"])] if avail["start2"] >= 0 else [])
+    out = []
+    for slot in range(31):
+        start = 390 + 30 * slot
+        end = start + duration * 30
+        if end > 1320 or not any(start >= a and end <= b for a, b in windows):
+            continue
+        distance = 0 if preference == 3 else max(0, pref["start1"] - start, start - (pref["end1"] - 30))
+        if flex < 0 or distance <= flex:
+            out.append(slot)
+    return out
+
+
+def cell_occupancy(rules: dict, duration: int = 2) -> np.ndarray:
+    """Expected occupancy by slot for one agent of each availability x preference cell,
+    averaged over the four flexibility levels, if it starts uniformly among its allowed starts."""
+    columns = []
+    for availability in range(4):
+        for preference in range(4):
+            occupancy = np.zeros(31)
+            for flexibility in range(4):
+                starts = allowed_starts(availability, preference, flexibility, rules, duration)
+                for s in starts:
+                    occupancy[s:s + duration] += 1.0 / len(starts) / 4
+            columns.append(occupancy)
+    return np.column_stack(columns)
+
+
+def fit_profile_mix(curve: list[float], rules: dict, ridge: float = MIX_RIDGE) -> tuple[list[float], dict[str, float]]:
+    """Non-negative cell shares (summing to 1) whose expected occupancy follows the real curve shape.
+
+    Least squares on the curve normalised to the per-agent occupancy budget, with the sum-to-one
+    constraint added as a heavily weighted row and a ridge penalty toward balanced shares.
+    Returns shares and fit diagnostics.
+    """
+    from scipy.optimize import nnls
+
+    a = cell_occupancy(rules)
+    y = np.asarray(curve, dtype=float)
+    y = y / y.sum() * a.sum(axis=0).mean()  # same total occupancy per agent as an average cell
+    weight = 100.0
+    balanced = np.full(a.shape[1], 1 / a.shape[1])
+    a_aug = np.vstack([a, weight * np.ones(a.shape[1]), np.sqrt(ridge) * np.eye(a.shape[1])])
+    y_aug = np.concatenate([y, [weight], np.sqrt(ridge) * balanced])
+    shares, _ = nnls(a_aug, y_aug)
+    shares = shares / shares.sum()
+    rmse = lambda w: float(np.sqrt(np.mean((a @ w - y) ** 2)) / y.mean())
+    return [round(float(s), 6) for s in shares], {"ridge": ridge, "relative_rmse_balanced": round(rmse(balanced), 4), "relative_rmse_fitted": round(rmse(shares), 4)}
+
+
+def write_profile_mix(shares: list[float], path: Path = MIX_PATH) -> None:
+    rows = [{"availability": c // 4, "preference": c % 4, "share": s} for c, s in enumerate(shares)]
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
 def build_params(sample: pd.DataFrame, evening_all: pd.DataFrame) -> dict[str, Any]:
     fitness = sample["count_fitness"]
     peak = float(fitness.max())
     p95 = float(fitness.quantile(0.95))
     p99 = float(fitness.quantile(0.99))
-    capacity_scaled = max(1, int(round(scale_occupancy(p95, peak))))
-    n_unscaled = max(1, int(round(2 * peak)))
+    capacity_scaled = CAPACITY_MODEL
+    scale = CAPACITY_MODEL / p95
+    n_agents, n_source = calibrated_n()
     labels = slot_labels()
     curve, curve_n = demand_curve(evening_all)
     seed = weekday_mean_curve(sample)
+    shrunk = {row["slot"]: row for row in shrunk_seed(sample)}
     for row in seed:
         raw = row["mean_occupancy"]
         row["mean_occupancy_scaled"] = (
-            None if raw is None else round(scale_occupancy(raw, peak), 2)
+            None if raw is None else round(scale_occupancy(raw, p95), 2)
         )
+        s = shrunk[row["slot"]]
+        row["mean_occupancy_shrunk"] = round(s["shrunk_mean"], 2)
+        row["mean_occupancy_shrunk_scaled"] = round(scale_occupancy(s["shrunk_mean"], p95), 4)
+        row["weekday_shrunk_scaled"] = {
+            day: round(scale_occupancy(v["shrunk"], p95), 4) for day, v in s["days"].items()
+        }
+        row["weekday_n_obs"] = {day: v["n"] for day, v in s["days"].items()}
 
     scaled_curve: dict[str, dict[str, float | None]] = {}
     for day, slots in curve.items():
         scaled_curve[day] = {
-            label: None if value is None else round(scale_occupancy(value, peak), 2)
+            label: None if value is None else round(scale_occupancy(value, p95), 2)
             for label, value in slots.items()
         }
 
@@ -281,15 +429,23 @@ def build_params(sample: pd.DataFrame, evening_all: pd.DataFrame) -> dict[str, A
         },
         "capacity_observed": int(round(p95)),
         "peak_observed": int(round(peak)),
-        "n_agents_unscaled": n_unscaled,
+        "n_agents_unscaled": int(round(n_agents / scale)),
         "capacity_unscaled": int(round(p95)),
-        "n_agents": N_AGENTS,
+        "n_agents": n_agents,
+        "n_agents_source": n_source,
         "capacity": capacity_scaled,
-        "scale_factor": round(N_AGENTS / (2.0 * peak), 6) if peak else 0,
+        "scale_factor": round(scale, 6),
         "scale_note": (
-            "n_agents=100 with occupancy scaled by 100/(2*peak), i.e. the "
-            "unscaled population is 2 x peak count. Use capacity_unscaled and "
-            "n_agents_unscaled to run in real head-count units."
+            f"Capacity-anchored: occupancy is scaled by {CAPACITY_MODEL}/p95 so the model "
+            "capacity equals the observed p95. n_agents is fitted by analysis/calibrate_n.js "
+            "(info none) to the real share of slots over capacity."
+        ),
+        "seed_shrink_k": SHRINK_K,
+        "seed_note": (
+            "Seed series are Mon-Thu weekday means. Each slot's pooled mean is shrunk toward "
+            "its nearest observed neighbours, and each weekday mean toward the shrunk pooled "
+            f"mean: (n * mean + k * prior) / (n + k), k = {SHRINK_K}. Slots with n_obs = 0 "
+            "use the neighbour estimate alone."
         ),
         "slots": labels,
         "demand_curve": curve,
@@ -347,25 +503,33 @@ def write_demand_csv(params: dict[str, Any], path: Path) -> None:
 def write_seed_csv(params: dict[str, Any], path: Path) -> None:
     """Write the NetLogo csv-extension seed file from params.json.
 
-    One row per evening slot. `mean_occupancy_scaled` is the weekday-pooled
-    mean; `monday_scaled` ... `friday_scaled` are the demand-curve values the
-    model cycles through when filling each slot's memory.
+    One row per slot. `mean_occupancy_scaled` is the shrunk pooled Mon-Thu mean
+    (the real curve the model is compared against); `monday_scaled` ...
+    `thursday_scaled` are the shrunk weekday values the model cycles through when
+    filling each slot's memory. `friday_scaled` is left empty (Friday closes at
+    20:00). `reference_n` is the population these values correspond to; the
+    model rescales them by n-agents / reference_n when scale-seed-with-n? is on.
     """
     labels = params["slots"]
-    scaled = params.get("demand_curve_scaled", {})
     rows = []
     for index, label in enumerate(labels):
         seed = next((item for item in params["seed_history"] if item["slot"] == label), {})
+        shrunk_days = seed.get("weekday_shrunk_scaled") or {}
+        day_n = seed.get("weekday_n_obs") or {}
         row = {
             "slot_index": index,
             "slot_label": label,
-            "mean_occupancy": seed.get("mean_occupancy"),
-            "mean_occupancy_scaled": seed.get("mean_occupancy_scaled"),
+            "mean_occupancy": seed.get("mean_occupancy_shrunk", seed.get("mean_occupancy")),
+            "mean_occupancy_scaled": seed.get("mean_occupancy_shrunk_scaled", seed.get("mean_occupancy_scaled")),
             "n_obs": seed.get("n_obs"),
-            "filled": seed.get("filled", False),
+            "filled": seed.get("n_obs", 0) == 0,
         }
         for day in WEEKDAYS:
-            row[f"{day.lower()}_scaled"] = scaled.get(day, {}).get(label)
+            row[f"{day.lower()}_scaled"] = shrunk_days.get(day)
+        for day in WEEKDAYS:
+            row[f"n_obs_{day.lower()}"] = day_n.get(day, 0)
+        row["shrink_k"] = params.get("seed_shrink_k", SHRINK_K)
+        row["reference_n"] = params.get("n_agents") if params.get("n_agents_source", "").endswith(".json") else None
         rows.append(row)
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(path, index=False)
@@ -391,6 +555,15 @@ def calibrate(panel_path: Path = PANEL_PATH) -> tuple[dict[str, Any], dict[str, 
         sample["date"].nunique(),
     )
     params = build_params(sample, evening_all)
+    shares, fit = fit_profile_mix([row["mean_occupancy_shrunk"] for row in params["seed_history"]], load_profile_rules())
+    params["profile_mix"] = {
+        "file": str(MIX_PATH.relative_to(ROOT)).replace("\\", "/"),
+        "method": "NNLS fit of availability x preference cell shares to the shrunk real curve shape (uniform start choice within each cell), ridge toward balanced shares",
+        "shares": shares,
+        **fit,
+    }
+    write_profile_mix(shares)
+    logging.info("profile-mix.csv: relative RMSE balanced=%s fitted=%s", fit["relative_rmse_balanced"], fit["relative_rmse_fitted"])
     targets = build_targets(sample, params)
     PARAMS_PATH.parent.mkdir(parents=True, exist_ok=True)
     PARAMS_PATH.write_text(json.dumps(params, indent=2) + "\n", encoding="utf-8")
@@ -432,9 +605,15 @@ def run_self_test() -> int:
     if len(labels) != 31 or labels[0] != "06:30" or labels[-1] != "21:30":
         failed += 1
         logging.error("slot labels wrong: %s", labels)
-    if abs(scale_occupancy(200, 250) - 40.0) > 1e-9:
+    if abs(scale_occupancy(236, 236) - CAPACITY_MODEL) > 1e-9:
         failed += 1
-        logging.error("scale_occupancy(200, 250) should be 40")
+        logging.error("scale_occupancy(p95, p95) should equal CAPACITY_MODEL")
+    if shrink(10.0, 5, 20.0, k=5) != 15.0 or shrink(None, 0, 20.0) != 20.0 or shrink(10.0, 0, 20.0) != 20.0:
+        failed += 1
+        logging.error("shrink() wrong")
+    if neighbour_estimate([None, 10.0, None, 30.0], 0) != 10.0 or neighbour_estimate([None, 10.0, None, 30.0], 2) != 20.0:
+        failed += 1
+        logging.error("neighbour_estimate() wrong")
     if abs(scale_occupancy(0, 250)) > 1e-9:
         failed += 1
         logging.error("scale_occupancy of 0 should be 0")
@@ -463,7 +642,8 @@ def run_self_test() -> int:
     probe_params = {
         "slots": ["16:00", "16:30"],
         "seed_history": [
-            {"slot": "16:00", "mean_occupancy": 100.0, "mean_occupancy_scaled": 20.0, "n_obs": 2},
+            {"slot": "16:00", "mean_occupancy": 100.0, "mean_occupancy_scaled": 20.0, "n_obs": 2,
+             "weekday_shrunk_scaled": {"Monday": 21.0, "Tuesday": 19.0}, "weekday_n_obs": {"Monday": 1}},
             {"slot": "16:30", "mean_occupancy": 110.0, "mean_occupancy_scaled": 22.0, "n_obs": 1},
         ],
         "demand_curve_scaled": {
@@ -484,9 +664,21 @@ def run_self_test() -> int:
     if float(written.loc[0, "mean_occupancy_scaled"]) != 20.0:
         failed += 1
         logging.error("seed csv pooled mean wrong: %s", written.loc[0, "mean_occupancy_scaled"])
-    if float(written.loc[0, "monday_scaled"]) != 21.0:
+    if float(written.loc[0, "monday_scaled"]) != 21.0 or int(written.loc[0, "n_obs_monday"]) != 1:
         failed += 1
         logging.error("seed csv monday_scaled wrong: %s", written.loc[0, "monday_scaled"])
+    rules = load_profile_rules()
+    if allowed_starts(0, 2, 2, rules) != [] or allowed_starts(2, 3, 3, rules) != list(range(30)) or allowed_starts(2, 0, 2, rules)[-1] != 10:
+        failed += 1
+        logging.error("allowed_starts() disagrees with web/simulation.js")
+    occupancy = cell_occupancy(rules)
+    if occupancy.shape != (31, 16) or abs(occupancy[:, 10].sum() - 2.0) > 1e-9:
+        failed += 1
+        logging.error("cell_occupancy() wrong: %s", occupancy.sum(axis=0))
+    shares, _ = fit_profile_mix(list(occupancy @ np.full(16, 1 / 16)), rules)
+    if abs(sum(shares) - 1) > 1e-5 or min(shares) < 0:
+        failed += 1
+        logging.error("fit_profile_mix() shares invalid: %s", shares)
     if failed:
         logging.error("%s self-test(s) failed", failed)
         return 1

@@ -137,6 +137,8 @@ def stage_model(work_dir: Path) -> Path:
         shutil.copy2(include, work_dir / include.name)
     rules = ROOT / "web" / "profile-rules.csv"
     shutil.copy2(rules, work_dir / rules.name)
+    mix = ROOT / "web" / "profile-mix.csv"
+    shutil.copy2(mix, work_dir / mix.name)
     seed = NETLOGO_DIR / "seed_history.csv"
     if seed.exists():
         shutil.copy2(seed, work_dir / "seed_history.csv")

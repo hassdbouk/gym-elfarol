@@ -40,10 +40,12 @@
     }
     return result;
   }
+  // Seed series per slot. The returned array carries referenceN: the population the
+  // values correspond to (null before calibration), used when scaleSeedWithN is on.
   function parseSeedHistory(text) {
     const rows = csv(text);
     if (rows.length !== SLOTS) throw Error("Seed history must contain 31 slots");
-    return rows.map((row, index) => {
+    const result = rows.map((row, index) => {
       if (Number(row.slot_index) !== index) throw Error("Seed history slots must be ordered");
       const series = ["monday", "tuesday", "wednesday", "thursday", "friday"].map(day => row[`${day}_scaled`]).filter(x => x !== "" && x != null).map(Number);
       if (!series.length) series.push(Number(row.mean_occupancy_scaled));
@@ -53,6 +55,29 @@
       series.mean = row.mean_occupancy_scaled !== "" && Number.isFinite(pooled) ? pooled : series.reduce((a, b) => a + b, 0) / series.length;
       return series;
     });
+    const reference = Number(rows[0].reference_n);
+    result.referenceN = rows[0].reference_n && Number.isFinite(reference) && reference > 0 ? reference : null;
+    return result;
+  }
+  // Availability x preference cell shares (cell = availability * 4 + preference), normalised to sum 1.
+  function parseProfileMix(text) {
+    const shares = Array(16).fill(0);
+    for (const row of csv(text)) {
+      const a = Number(row.availability), p = Number(row.preference), share = Number(row.share);
+      if (![a, p].every(x => Number.isInteger(x) && x >= 0 && x < 4) || !(share >= 0)) throw Error("Invalid profile mix row");
+      shares[a * 4 + p] = share;
+    }
+    const total = shares.reduce((x, y) => x + y, 0);
+    if (!(total > 0)) throw Error("Profile mix shares must be positive");
+    return shares.map(s => s / total);
+  }
+  // Largest-remainder allocation of `total` agents to cells (ties: lower cell first).
+  function mixCellCounts(shares, total) {
+    const quotas = shares.map(s => s * total), counts = quotas.map(q => Math.floor(q));
+    let leftover = total - counts.reduce((a, b) => a + b, 0);
+    const order = shares.map((_, i) => i).sort((a, b) => (quotas[b] - counts[b]) - (quotas[a] - counts[a]) || a - b);
+    for (let i = 0; leftover > 0; i++, leftover--) counts[order[i % order.length]]++;
+    return counts;
   }
   function preferenceDistance(agent, slot, rules) {
     if (agent.preference === 3) return 0;
@@ -67,14 +92,23 @@
         && (flex < 0 || preferenceDistance(agent, slot, rules) <= flex);
     });
   }
-  function profiles(count, seed, rules, duration) {
+  // Balanced marginals by default. With `mix` (cell shares), availability and preference
+  // are drawn jointly from the demand-weighted mix; flexibility and crowding stay balanced.
+  function profiles(count, seed, rules, duration, mix = null) {
     const random = rng(seed);
     const balanced = (levels, offset = 0) => shuffle(Array.from({ length: count }, (_, i) => (i + offset) % levels), random);
-    const availability = balanced(4), flexibility = balanced(4), crowding = balanced(3, Math.abs(seed) % 3);
-    const preferences = Array(count).fill(0);
-    for (let group = 0; group < 4; group++) {
-      const members = shuffle(availability.map((a, i) => a === group ? i : -1).filter(i => i >= 0), random);
-      members.forEach((id, j) => { preferences[id] = (j + group) % 4; });
+    let availability, preferences, flexibility, crowding;
+    if (mix) {
+      const cells = shuffle(mixCellCounts(mix, count).flatMap((n, cell) => Array(n).fill(cell)), random);
+      availability = cells.map(c => Math.floor(c / 4)); preferences = cells.map(c => c % 4);
+      flexibility = balanced(4); crowding = balanced(3, Math.abs(seed) % 3);
+    } else {
+      availability = balanced(4); flexibility = balanced(4); crowding = balanced(3, Math.abs(seed) % 3);
+      preferences = Array(count).fill(0);
+      for (let group = 0; group < 4; group++) {
+        const members = shuffle(availability.map((a, i) => a === group ? i : -1).filter(i => i >= 0), random);
+        members.forEach((id, j) => { preferences[id] = (j + group) % 4; });
+      }
     }
     return Array.from({ length: count }, (_, id) => {
       const agent = { id, availability: availability[id], preference: preferences[id], flexibility: flexibility[id], crowding: crowding[id], tiePriorities: Array.from({ length: SLOTS }, () => random()) };
@@ -114,12 +148,18 @@
   function predict(strategy, history, scale) {
     return scale * strategy[0] + strategy.slice(1).reduce((sum, weight, i) => sum + weight * history[i], 0);
   }
+  // Best strategy by past error on this slot's history, then its forecast. With
+  // recencyDecay < 1 the error on day d back is weighted by decay^(d-1); the weight is
+  // built by repeated multiplication so NetLogo and JS produce identical doubles.
   function currentPrediction(agent, history, options) {
-    const scale = predictorScale(options);
+    const scale = predictorScale(options), decay = options.recencyDecay ?? 1;
     let best = agent.strategies[0], bestError = Infinity;
     for (const strategy of agent.strategies) {
-      let error = 0;
-      for (let day = 1; day <= options.memory; day++) error += Math.abs(history[day - 1] - predict(strategy, history.slice(day, day + options.memory), scale));
+      let error = 0, weight = 1;
+      for (let day = 1; day <= options.memory; day++) {
+        error += weight * Math.abs(history[day - 1] - predict(strategy, history.slice(day, day + options.memory), scale));
+        weight *= decay;
+      }
       if (error <= bestError) { bestError = error; best = strategy; }
     }
     return predict(best, history.slice(0, options.memory), scale);
@@ -195,22 +235,29 @@
   // Model defaults for the decision rule and utility weights (NetLogo widget defaults match).
   const DEFAULTS = Object.freeze({
     decisionRule: "utility", workoutValue: 1, crowdPenalty: 1, comfortThreshold: 0.8, timeWeight: 0.5, tasteWeight: 0.25,
-    temperature: 0.1, outcomeLearning: false, learningRate: 0.2, learningWeight: 0.5,
+    temperature: 0.1, outcomeLearning: false, learningRate: 0.2, learningWeight: 0.5, recencyDecay: 1,
+    scaleSeedWithN: true, capacityFromRatio: false, capacityRatio: 10.88, profileMix: "balanced",
   });
   class Simulation {
     constructor(rules, seedHistory, options = {}) {
       this.rules = rules;
-      this.options = { agentCount: 100, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...DEFAULTS, ...options };
+      // agentCount: calibrated by analysis/calibrate_n.js (data/processed/calibration_n.json).
+      this.options = { agentCount: 340, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 50, burnIn: 20, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...DEFAULTS, ...options };
       const o = this.options;
+      // Optional: capacity as a percentage of the population, so changing N keeps the ratio.
+      if (o.capacityFromRatio) o.capacity = Math.max(1, Math.round(o.capacityRatio * o.agentCount / 100));
       for (const k of ["agentCount", "capacity", "memory", "strategies", "delay", "maxDays", "duration"]) if (!Number.isInteger(o[k]) || o[k] < 1) throw Error(`Invalid ${k}`);
-      if (o.duration > SLOTS || !["none", "live", "delayed"].includes(o.mode) || !["legacy", "utility"].includes(o.decisionRule)) throw Error("Invalid simulation configuration");
+      if (o.duration > SLOTS || !["none", "live", "delayed"].includes(o.mode) || !["legacy", "utility"].includes(o.decisionRule) || !["balanced", "demand-weighted"].includes(o.profileMix)) throw Error("Invalid simulation configuration");
+      if (o.profileMix === "demand-weighted" && !rules.mix) throw Error("Demand-weighted profile mix needs profile-mix.csv (rules.mix)");
       for (const k of ["workoutValue", "crowdPenalty", "tasteWeight", "timeWeight", "temperature", "learningWeight"]) if (!Number.isFinite(o[k]) || o[k] < 0) throw Error(`Invalid ${k}`);
-      if (!(o.comfortThreshold >= 0 && o.comfortThreshold < 1) || !(o.learningRate >= 0 && o.learningRate <= 1)) throw Error("Invalid utility configuration");
+      if (!(o.comfortThreshold >= 0 && o.comfortThreshold < 1) || !(o.learningRate >= 0 && o.learningRate <= 1) || !(o.recencyDecay > 0 && o.recencyDecay <= 1)) throw Error("Invalid utility configuration");
       if (![o.populationSeed, o.simulationSeed].every(x => Number.isInteger(x) && x >= 0 && x <= 2147483646)) throw Error("Seeds must be integers from 0 to 2147483646");
       const random = rng(o.simulationSeed);
-      this.agents = profiles(o.agentCount, o.populationSeed, rules, o.duration).map(agent => ({ ...agent, prevStart: -1, fixedStart: -2, forecasts: Array(SLOTS).fill(0), reinforcement: Array(SLOTS).fill(0), strategies: Array.from({ length: o.strategies }, () => Array.from({ length: o.memory + 1 }, () => 1 - random() * 2)) }));
-      this.realProfile = seedHistory.map(series => Number.isFinite(series.mean) ? series.mean : mean(series));
-      this.slotHistories = seedHistory.map(series => Array.from({ length: o.memory * 2 }, (_, i) => series[i % series.length]));
+      this.agents = profiles(o.agentCount, o.populationSeed, rules, o.duration, o.profileMix === "demand-weighted" ? rules.mix : null).map(agent => ({ ...agent, prevStart: -1, fixedStart: -2, forecasts: Array(SLOTS).fill(0), reinforcement: Array(SLOTS).fill(0), strategies: Array.from({ length: o.strategies }, () => Array.from({ length: o.memory + 1 }, () => 1 - random() * 2)) }));
+      // Seeds (and the real curve they come from) are in units of referenceN agents; rescale to N.
+      this.seedFactor = o.scaleSeedWithN && seedHistory.referenceN ? o.agentCount / seedHistory.referenceN : 1;
+      this.realProfile = seedHistory.map(series => (Number.isFinite(series.mean) ? series.mean : mean(series)) * this.seedFactor);
+      this.slotHistories = seedHistory.map(series => Array.from({ length: o.memory * 2 }, (_, i) => series[i % series.length] * this.seedFactor));
       this.ticks = 0; this.day = 1; this.slot = 0; this.done = false; this.history = []; this.todayAttendance = []; this.peak = 0; this.last = null;
       this.metrics = { slots: 0, over: 0, visits: 0, good: 0, skips: 0, agentDays: 0, peak: 0, occupancy: [], days: 0, slotSums: Array(SLOTS).fill(0), startPairs: 0, startChanges: 0, startShift: 0, laterThanPlanned: 0, structuralSkips: 0 };
       this.newDay(false);
@@ -300,5 +347,5 @@
       return { populationSeed: this.options.populationSeed, simulationSeed: this.options.simulationSeed, options: this.options, rules: this.rules, agents: this.agents.map(({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts }) => ({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts })) };
     }
   }
-  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, bestStart, chooseStart, choiceUtility, crowdingPenalty, utilityDecision, choiceDraw, mulmod, DEFAULTS, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
+  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, parseProfileMix, mixCellCounts, bestStart, chooseStart, choiceUtility, crowdingPenalty, utilityDecision, choiceDraw, mulmod, DEFAULTS, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
 });

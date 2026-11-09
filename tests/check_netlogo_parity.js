@@ -14,6 +14,7 @@ const header = parse(lines[start]);
 const rows = lines.slice(start + 1).filter(Boolean).map(line => Object.fromEntries(parse(line).map((v, i) => [header[i], v])));
 assert(rows.length > 0, 'No completed runs');
 const rules = G.parseRules(fs.readFileSync(path.join(root, 'web/profile-rules.csv'), 'utf8'));
+rules.mix = G.parseProfileMix(fs.readFileSync(path.join(root, 'web/profile-mix.csv'), 'utf8'));
 const history = G.parseSeedHistory(fs.readFileSync(path.join(root, 'netlogo/seed_history.csv'), 'utf8'));
 // NetLogo writes list reporters as "[a b c]".
 const netlogoList = text => text.replace(/^\[|\]$/g, '').trim().split(/\s+/).filter(Boolean).map(Number);
@@ -21,7 +22,10 @@ const close = (a, b) => Math.abs(a - b) < 1e-8;
 const UTILITY_COLUMNS = {
   'workout-value': 'workoutValue', 'crowd-penalty': 'crowdPenalty', 'comfort-threshold': 'comfortThreshold', 'time-weight': 'timeWeight',
   'taste-weight': 'tasteWeight', 'choice-temperature': 'temperature', 'outcome-learning?': 'outcomeLearning', 'learning-rate': 'learningRate', 'learning-weight': 'learningWeight',
+  'recency-decay': 'recencyDecay', 'scale-seed-with-n?': 'scaleSeedWithN', 'capacity-from-ratio?': 'capacityFromRatio',
+  'capacity-ratio': 'capacityRatio', 'profile-mix': 'profileMix',
 };
+const BOOLEAN_OPTIONS = new Set(['outcomeLearning', 'scaleSeedWithN', 'capacityFromRatio']);
 let compared = 0;
 for (const row of rows) {
   const o = {
@@ -31,7 +35,7 @@ for (const row of rows) {
     decisionRule: row['decision-rule'] || 'legacy', // tables written before the switch are legacy runs
   };
   // Utility-rule globals; tables that do not record them fall back to the shared defaults.
-  for (const [column, key] of Object.entries(UTILITY_COLUMNS)) if (column in row) o[key] = key === 'outcomeLearning' ? row[column] === 'true' : Number(row[column]);
+  for (const [column, key] of Object.entries(UTILITY_COLUMNS)) if (column in row) o[key] = BOOLEAN_OPTIONS.has(key) ? row[column] === 'true' : key === 'profileMix' ? row[column] : Number(row[column]);
   assert.equal(row['seed-from-data?'], 'true');
   const s = new G.Simulation(rules, history, o);
   while (!s.done) s.step();
