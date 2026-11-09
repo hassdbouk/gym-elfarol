@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gym El Farol | Decision Stream</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">GYM EL FAROL / LIVE MODEL VIEW</p>
+          <h1>See the decisions happen.</h1>
+          <p class="lede">A visual stream for the slot-based El Farol gym model. Each tick is one 30-minute decision point.</p>
+        </div>
+        <div class="status-pill"><span id="status-dot"></span><span id="status">Ready</span></div>
+      </header>
+
+      <section class="controls panel">
+        <div class="control-group">
+          <label for="info-mode">Information mode</label>
+          <select id="info-mode">
+            <option value="none">None</option>
+            <option value="live" selected>Live</option>
+            <option value="delayed">Delayed</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="agent-count">Agents <output id="agent-count-value">100</output></label>
+          <input id="agent-count" type="range" min="20" max="200" value="100" step="10">
+        </div>
+        <div class="control-group">
+          <label for="capacity">Capacity <output id="capacity-value">37</output></label>
+          <input id="capacity" type="range" min="10" max="100" value="37">
+        </div>
+        <div class="control-group">
+          <label for="memory-size">Memory <output id="memory-size-value">5 days</output></label>
+          <input id="memory-size" type="range" min="1" max="10" value="5">
+        </div>
+        <div class="control-group">
+          <label for="max-days">Max simulated days</label>
+          <input id="max-days" type="number" min="1" max="365" value="40">
+        </div>
+        <div class="control-group">
+          <label for="tick-duration">Time per tick <output id="tick-duration-value">850 ms</output></label>
+          <input id="tick-duration" type="range" min="50" max="2000" value="850" step="50">
+        </div>
+        <div class="button-row">
+          <button id="reset" class="button secondary">Reset</button>
+          <button id="step" class="button secondary">Step</button>
+          <button id="play" class="button primary">Start simulation</button>
+        </div>
+      </section>
+
+      <section class="metrics">
+        <article class="metric panel"><span>Current slot</span><strong id="metric-slot">06:30</strong><small id="metric-day">Day 1</small></article>
+        <article class="metric panel"><span>Occupancy</span><strong id="metric-attendance">0 / 37</strong><small id="metric-capacity">Capacity 37</small></article>
+        <article class="metric panel"><span>Decisions this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 going · 0 waiting</small></article>
+        <article class="metric panel"><span>Peak so far</span><strong id="metric-peak">0</strong><small id="metric-over">No crowding yet</small></article>
+      </section>
+
+      <section class="main-grid">
+        <article class="panel agents-panel">
+          <div class="section-heading">
+            <div><p class="eyebrow">AGENT FIELD</p><h2>What the population is doing</h2></div>
+            <div class="legend"><span><i class="legend-dot going"></i>Going</span><span><i class="legend-dot waiting"></i>Waiting</span><span><i class="legend-dot skipped"></i>Skipped</span><span><i class="legend-dot done"></i>Already chose</span></div>
+          </div>
+          <div id="agent-grid" class="agent-grid" aria-label="Agent decision field"></div>
+        </article>
+
+        <article class="panel feed-panel">
+          <div class="section-heading"><div><p class="eyebrow">DECISION STREAM</p><h2>Latest actions</h2></div><span id="feed-count" class="muted">0 events</span></div>
+          <div id="event-feed" class="event-feed"><div class="empty-state">Start the simulation to see agent decisions appear here.</div></div>
+        </article>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">orange line = capacity · older data is compressed, not dropped</span></div>
+        <div class="chart-wrap"><canvas id="occupancy-chart" height="220"></canvas></div>
+      </section>
+
+      <footer>Browser visualization of the decision rules in <code>netlogo/GymElFarol.nlogox</code>. The NetLogo model remains the experiment source of truth.</footer>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

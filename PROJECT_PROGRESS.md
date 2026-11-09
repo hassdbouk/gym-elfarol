@@ -112,3 +112,4 @@ The early pilot suggests that live information may lower the highest attendance 
 - `netlogo/GymElFarol.nlogox` — extended NetLogo model
 - `netlogo/experiments.xml` — BehaviorSpace experiment definitions
 - `analysis/pilot_decision.md` — pilot results and slot-model decision
+- `web/` — dependency-free live browser view of agent decisions and occupancy
