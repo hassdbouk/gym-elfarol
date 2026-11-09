@@ -29,3 +29,25 @@ h1, h2, p { margin-top: 0; } h1 { font-size: clamp(30px, 5vw, 52px); letter-spac
 footer { padding: 18px 4px; } code { color: var(--blue); }
 @media (max-width: 850px) { .main-grid { grid-template-columns: 1fr; }.metrics { grid-template-columns: repeat(2, 1fr); }.agent-grid { grid-template-columns: repeat(15, 1fr); } }
 @media (max-width: 540px) { .shell { padding: 25px 14px; }.hero { display: block; }.status-pill { display: inline-block; margin-top: 14px; }.controls { display: grid; grid-template-columns: 1fr 1fr; }.button-row { grid-column: 1 / -1; }.button { flex: 1; }.metrics { gap: 8px; }.metric { padding: 13px; }.metric strong { font-size: 20px; } }
+
+input[type="number"] { color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 8px; }
+button:disabled { opacity: .45; cursor: default; }
+button.agent { border: 0; padding: 0; cursor: pointer; min-width: 0; }
+button.agent.selected { outline: 2px solid white; outline-offset: 2px; }
+button:focus-visible, summary:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+.muted { color: var(--muted); }
+.profile-panel { padding: 18px; margin-bottom: 18px; }
+.profile-panel summary { cursor: pointer; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.profile-panel p { color: var(--muted); }
+.population-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.population-summary h3 { font-size: 14px; margin: 6px 0; }
+.population-summary ul { list-style: none; padding: 0; }
+.population-summary li { display: flex; justify-content: space-between; gap: 12px; margin: 7px 0; font-size: 12px; color: var(--muted); }
+.population-summary strong { color: var(--text); }
+.agent-detail { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+.agent-detail h3 { margin: 0 0 12px; }
+.agent-detail dl { display: grid; grid-template-columns: 145px 1fr; gap: 7px 12px; margin: 0; font-size: 12px; }
+.agent-detail dt { color: var(--muted); }
+.agent-detail dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .population-summary { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .population-summary { grid-template-columns: 1fr; } .agent-detail dl { grid-template-columns: 110px 1fr; } .legend { flex-wrap: wrap; } }

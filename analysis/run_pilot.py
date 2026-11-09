@@ -11,6 +11,7 @@ log. Default is the 3x3 info-mode x memory-size pilot (5 seeds).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -26,9 +27,9 @@ ROOT = Path(__file__).resolve().parents[1]
 NETLOGO_DIR = ROOT / "netlogo"
 MODEL_PATH = NETLOGO_DIR / "GymElFarol.nlogox"
 SETUP_PATH = NETLOGO_DIR / "experiments.xml"
-DEFAULT_OUT = ROOT / "data" / "processed" / "pilot.csv"
-LOG_PATH = ROOT / "data" / "processed" / "pilot.log"
-META_PATH = ROOT / "data" / "processed" / "pilot_run_meta.json"
+DEFAULT_OUT = ROOT / "data" / "processed" / "preferences_pilot.csv"
+LOG_PATH = ROOT / "data" / "processed" / "preferences_pilot.log"
+META_PATH = ROOT / "data" / "processed" / "preferences_pilot.meta.json"
 
 NETLOGO_CANDIDATES = [
     Path(r"C:\Program Files\NetLogo 7.0.4"),
@@ -132,6 +133,10 @@ def stage_model(work_dir: Path) -> Path:
     staged_model = work_dir / MODEL_PATH.name
     shutil.copy2(MODEL_PATH, staged_model)
     shutil.copy2(SETUP_PATH, work_dir / SETUP_PATH.name)
+    for include in NETLOGO_DIR.glob("*.nls"):
+        shutil.copy2(include, work_dir / include.name)
+    rules = ROOT / "web" / "profile-rules.csv"
+    shutil.copy2(rules, work_dir / rules.name)
     seed = NETLOGO_DIR / "seed_history.csv"
     if seed.exists():
         shutil.copy2(seed, work_dir / "seed_history.csv")
@@ -236,7 +241,9 @@ def run_experiment(
         "returncode": completed.returncode,
         "table_bytes": table_path.stat().st_size,
     }
-    META_PATH.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    sources = [MODEL_PATH, NETLOGO_DIR / "preferences.nls", NETLOGO_DIR / "seed_history.csv", ROOT / "web" / "profile-rules.csv"]
+    meta["source_sha256"] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
+    table_path.with_suffix(".meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     logging.info(
         "Finished %s in %.1f s -> %s (%s bytes)",
         experiment,
@@ -257,7 +264,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         type=Path,
-        default=DEFAULT_OUT,
+        default=None,
         help="Table CSV path",
     )
     parser.add_argument("--threads", type=int, default=0, help="0 = 75%% of CPUs")
@@ -270,7 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--smoke",
         action="store_true",
-        help="Run smoke-one-day (24 ticks, 1 seed) instead of the named experiment",
+        help="Run smoke-one-day (31 ticks, 1 seed) instead of the named experiment",
     )
     return parser
 
@@ -280,7 +287,7 @@ def main() -> int:
     args = build_parser().parse_args()
     experiment = "smoke-one-day" if args.smoke else args.experiment
     output = (
-        ROOT / "data" / "processed" / "smoke.csv" if args.smoke else args.output
+        ROOT / "data" / "processed" / "preferences_smoke.csv" if args.smoke else (args.output or ROOT / "data" / "processed" / ("preferences_pilot.csv" if experiment == "info-memory-pilot" else "preferences_" + experiment + ".csv"))
     )
     threads = args.threads if args.threads > 0 else default_threads()
     home = find_netlogo_home(args.netlogo)
