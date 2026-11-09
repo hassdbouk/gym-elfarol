@@ -48,6 +48,9 @@
       const series = ["monday", "tuesday", "wednesday", "thursday", "friday"].map(day => row[`${day}_scaled`]).filter(x => x !== "" && x != null).map(Number);
       if (!series.length) series.push(Number(row.mean_occupancy_scaled));
       if (!series.every(Number.isFinite)) throw Error("Invalid occupancy seed");
+      // The pooled slot mean is the real (scaled) occupancy curve used by profile-rmse.
+      const pooled = Number(row.mean_occupancy_scaled);
+      series.mean = row.mean_occupancy_scaled !== "" && Number.isFinite(pooled) ? pooled : series.reduce((a, b) => a + b, 0) / series.length;
       return series;
     });
   }
@@ -84,10 +87,12 @@
     const timeCost = preferenceDistance(agent, slot, rules) / Math.max(1, flex < 0 ? CLOSE - OPEN : flex);
     return rules.crowding[agent.crowding].value * prediction / capacity - timeCost;
   }
-  function chooseStart(agent, currentSlot, currentPrediction, histories, options, rules) {
+  // Best remaining start slot (-1 if every candidate is excluded). The agent goes now
+  // only if this is the current slot.
+  function bestStart(agent, currentSlot, currentPrediction, histories, options, rules) {
     const candidates = agent.allowedStarts.filter(s => s >= currentSlot);
-    if (!candidates.includes(currentSlot)) return false;
-    if (options.mustGo && currentSlot === candidates.at(-1)) return true;
+    if (!candidates.includes(currentSlot)) return -1;
+    if (options.mustGo && currentSlot === candidates.at(-1)) return currentSlot;
     let best = -1, bestScore = -Infinity;
     for (const slot of candidates) {
       const h = histories[slot].slice(0, options.memory);
@@ -96,38 +101,58 @@
       const score = utility(agent, slot, estimate, options.capacity, rules);
       if (score > bestScore || (score === bestScore && (best < 0 || agent.tiePriorities[slot] > agent.tiePriorities[best]))) { best = slot; bestScore = score; }
     }
-    return best === currentSlot;
+    return best;
   }
-  function predict(strategy, history, count) {
-    return count * strategy[0] + strategy.slice(1).reduce((sum, weight, i) => sum + weight * history[i], 0);
+  function chooseStart(agent, currentSlot, currentPrediction, histories, options, rules) {
+    return bestStart(agent, currentSlot, currentPrediction, histories, options, rules) === currentSlot;
+  }
+  // Constant term of the El Farol linear predictor. The original scales it by
+  // population; the utility rule scales it by capacity, the per-slot occupancy scale.
+  function predictorScale(options) {
+    return options.decisionRule === "utility" ? options.capacity : options.agentCount;
+  }
+  function predict(strategy, history, scale) {
+    return scale * strategy[0] + strategy.slice(1).reduce((sum, weight, i) => sum + weight * history[i], 0);
   }
   function currentPrediction(agent, history, options) {
+    const scale = predictorScale(options);
     let best = agent.strategies[0], bestError = Infinity;
     for (const strategy of agent.strategies) {
       let error = 0;
-      for (let day = 1; day <= options.memory; day++) error += Math.abs(history[day - 1] - predict(strategy, history.slice(day, day + options.memory), options.agentCount));
+      for (let day = 1; day <= options.memory; day++) error += Math.abs(history[day - 1] - predict(strategy, history.slice(day, day + options.memory), scale));
       if (error <= bestError) { bestError = error; best = strategy; }
     }
-    return predict(best, history.slice(0, options.memory), options.agentCount);
+    return predict(best, history.slice(0, options.memory), scale);
+  }
+  const mean = values => values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  // Lag-1 autocorrelation of consecutive same-day slots (overnight pairs excluded).
+  function autocorrelation(points) {
+    const pairs = points.slice(1).map((p, i) => [points[i], p]).filter(([a, b]) => a.day === b.day);
+    if (pairs.length < 2) return 0;
+    const x = pairs.map(p => p[0].attendance), y = pairs.map(p => p[1].attendance), mx = mean(x), my = mean(y);
+    const numerator = x.reduce((s, v, i) => s + (v - mx) * (y[i] - my), 0);
+    const denominator = Math.sqrt(x.reduce((s, v) => s + (v - mx) ** 2, 0) * y.reduce((s, v) => s + (v - my) ** 2, 0));
+    return denominator ? numerator / denominator : 0;
   }
   class Simulation {
     constructor(rules, seedHistory, options = {}) {
       this.rules = rules;
-      this.options = { agentCount: 100, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...options };
+      this.options = { agentCount: 100, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, decisionRule: "legacy", ...options };
       const o = this.options;
       for (const k of ["agentCount", "capacity", "memory", "strategies", "delay", "maxDays", "duration"]) if (!Number.isInteger(o[k]) || o[k] < 1) throw Error(`Invalid ${k}`);
-      if (o.duration > SLOTS || !["none", "live", "delayed"].includes(o.mode)) throw Error("Invalid simulation configuration");
+      if (o.duration > SLOTS || !["none", "live", "delayed"].includes(o.mode) || !["legacy", "utility"].includes(o.decisionRule)) throw Error("Invalid simulation configuration");
       if (![o.populationSeed, o.simulationSeed].every(x => Number.isInteger(x) && x >= 0 && x <= 2147483646)) throw Error("Seeds must be integers from 0 to 2147483646");
       const random = rng(o.simulationSeed);
-      this.agents = profiles(o.agentCount, o.populationSeed, rules, o.duration).map(agent => ({ ...agent, strategies: Array.from({ length: o.strategies }, () => Array.from({ length: o.memory + 1 }, () => 1 - random() * 2)) }));
+      this.agents = profiles(o.agentCount, o.populationSeed, rules, o.duration).map(agent => ({ ...agent, prevStart: -1, fixedStart: -2, strategies: Array.from({ length: o.strategies }, () => Array.from({ length: o.memory + 1 }, () => 1 - random() * 2)) }));
+      this.realProfile = seedHistory.map(series => Number.isFinite(series.mean) ? series.mean : mean(series));
       this.slotHistories = seedHistory.map(series => Array.from({ length: o.memory * 2 }, (_, i) => series[i % series.length]));
       this.ticks = 0; this.day = 1; this.slot = 0; this.done = false; this.history = []; this.todayAttendance = []; this.peak = 0; this.last = null;
-      this.metrics = { slots: 0, over: 0, visits: 0, good: 0, skips: 0, agentDays: 0, peak: 0, occupancy: [] };
+      this.metrics = { slots: 0, over: 0, visits: 0, good: 0, skips: 0, agentDays: 0, peak: 0, occupancy: [], days: 0, slotSums: Array(SLOTS).fill(0), startPairs: 0, startChanges: 0, startShift: 0, laterThanPlanned: 0, structuralSkips: 0 };
       this.newDay();
     }
     newDay() {
       this.todayAttendance = [];
-      for (const a of this.agents) Object.assign(a, { decided: false, attending: false, wentToday: false, skippedToday: false, goodVisit: false, departure: -1, startSlot: -1, startedThisSlot: false, leftThisSlot: false, prediction: null });
+      for (const a of this.agents) Object.assign(a, { decided: false, attending: false, wentToday: false, skippedToday: false, goodVisit: false, departure: -1, startSlot: -1, plannedSlot: -2, startedThisSlot: false, leftThisSlot: false, prediction: null });
     }
     step() {
       if (this.done) return null;
@@ -143,7 +168,9 @@
         if (o.mode === "live" && slot > 0) prediction = 0.5 * prediction + 0.5 * this.todayAttendance[slot - 1];
         if (o.mode === "delayed" && slot >= o.delay) prediction = 0.5 * prediction + 0.5 * this.todayAttendance[slot - o.delay];
         a.prediction = prediction;
-        if (chooseStart(a, slot, prediction, this.slotHistories, o, this.rules)) Object.assign(a, { decided: true, attending: true, wentToday: true, goodVisit: true, departure: slot + o.duration, startSlot: slot, startedThisSlot: true });
+        const best = bestStart(a, slot, prediction, this.slotHistories, o, this.rules);
+        if (a.plannedSlot === -2) a.plannedSlot = best; // first-choice slot at the agent's first decision today
+        if (best === slot) Object.assign(a, { decided: true, attending: true, wentToday: true, goodVisit: true, departure: slot + o.duration, startSlot: slot, startedThisSlot: true });
       }
       const attendance = this.agents.filter(a => a.attending).length;
       if (attendance > o.capacity) for (const a of this.agents) if (a.attending) a.goodVisit = false;
@@ -153,15 +180,50 @@
       if (day > o.burnIn) {
         const m = this.metrics;
         m.slots++; m.over += Number(attendance > o.capacity); m.peak = Math.max(m.peak, attendance); m.occupancy.push({ day, slot, attendance });
-        if (slot === SLOTS - 1) { m.agentDays += o.agentCount; m.visits += this.agents.filter(a => a.wentToday).length; m.good += this.agents.filter(a => a.goodVisit).length; m.skips += this.agents.filter(a => a.skippedToday).length; }
+        m.slotSums[slot] += attendance;
+        if (slot === SLOTS - 1) {
+          m.days++; m.agentDays += o.agentCount; m.visits += this.agents.filter(a => a.wentToday).length; m.good += this.agents.filter(a => a.goodVisit).length; m.skips += this.agents.filter(a => a.skippedToday).length;
+          m.structuralSkips += this.agents.filter(a => a.skippedToday && !a.allowedStarts.length).length;
+          // Start-shift accounting over consecutive measured days.
+          for (const a of this.agents) {
+            if (a.wentToday) {
+              if (a.prevStart >= 0) { m.startPairs++; m.startChanges += Number(a.startSlot !== a.prevStart); m.startShift += Math.abs(a.startSlot - a.prevStart); }
+              if (a.plannedSlot >= 0 && a.startSlot > a.plannedSlot) m.laterThanPlanned++;
+            }
+            a.prevStart = a.wentToday ? a.startSlot : -1;
+            if (a.fixedStart === -2) a.fixedStart = a.wentToday ? a.startSlot : -1;
+            else if (a.fixedStart >= 0 && (!a.wentToday || a.startSlot !== a.fixedStart)) a.fixedStart = -1;
+          }
+        }
       }
       this.last = { day, slot, attendance, arrivals: this.agents.filter(a => a.startedThisSlot).length, departures: this.agents.filter(a => a.leftThisSlot).length, waiting: this.agents.filter(a => !a.decided).length };
       this.ticks++; this.done = this.ticks >= o.maxDays * SLOTS; this.day = day; this.slot = slot;
       return this.last;
     }
+    // Post-burn-in reporters, named as in NetLogo BehaviorSpace output.
+    summary() {
+      const m = this.metrics, counts = m.occupancy.map(p => p.attendance), average = mean(counts);
+      const eligible = this.agents.filter(a => a.allowedStarts.length);
+      const profile = m.slotSums.map(x => m.days ? x / m.days : 0);
+      return {
+        "peak-occupancy": m.peak,
+        "pct-slots-over-capacity": m.slots ? 100 * m.over / m.slots : 0,
+        "occupancy-variance": counts.length >= 2 ? mean(counts.map(x => (x - average) ** 2)) : 0,
+        "good-visit-rate": m.visits ? m.good / m.visits : 0,
+        "skip-rate": m.agentDays ? m.skips / m.agentDays : 0,
+        "lag1-autocorr": autocorrelation(m.occupancy),
+        "start-change-rate": m.startPairs ? m.startChanges / m.startPairs : 0,
+        "mean-start-shift": m.startPairs ? m.startShift / m.startPairs : 0,
+        "later-than-planned-share": m.visits ? m.laterThanPlanned / m.visits : 0,
+        "fixed-start-share": eligible.length && m.days ? eligible.filter(a => a.fixedStart >= 0).length / eligible.length : 0,
+        "structural-skip-rate": m.agentDays ? m.structuralSkips / m.agentDays : 0,
+        "occupancy-profile": profile,
+        "profile-rmse": Math.sqrt(mean(profile.map((x, i) => (x - this.realProfile[i]) ** 2))),
+      };
+    }
     profileExport() {
       return { populationSeed: this.options.populationSeed, simulationSeed: this.options.simulationSeed, options: this.options, rules: this.rules, agents: this.agents.map(({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts }) => ({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts })) };
     }
   }
-  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, chooseStart, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
+  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, bestStart, chooseStart, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
 });

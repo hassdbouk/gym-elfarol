@@ -36,6 +36,14 @@ globals [
   n-skips
   n-agent-days
   peak-so-far
+  n-days-recorded       ;; measured (post-burn-in) days
+  slot-occupancy-sums   ;; per-slot occupancy summed over measured days
+  real-profile          ;; scaled real occupancy by slot (seed mean_occupancy_scaled)
+  n-start-pairs         ;; agent visits on two consecutive measured days
+  n-start-changes
+  sum-start-shift
+  n-later-than-planned
+  n-structural-skips    ;; skips by agents with no allowed start
   availability-rules preference-rules flexibility-rules crowding-rules
   profile-rng model-rng profile-assignments
 ]
@@ -51,6 +59,9 @@ turtles-own [
   good-visit?           ;; every occupied slot of this visit was at or under capacity
   availability-group time-preference flexibility-level crowding-preference
   slot-tie-priorities allowed-start-slots departure-slot visit-start-slot
+  planned-slot          ;; best slot at the first decision today (-2 = not yet decided)
+  prev-start-slot       ;; start slot on the previous measured day (-1 = no visit)
+  fixed-start-slot      ;; -2 unset, -1 changed or missed a day, else the constant start
 ]
 
 to setup
@@ -70,6 +81,13 @@ to setup
   set n-skips 0
   set n-agent-days 0
   set peak-so-far 0
+  set n-days-recorded 0
+  set slot-occupancy-sums n-values n-slots [ 0 ]
+  set n-start-pairs 0
+  set n-start-changes 0
+  set sum-start-shift 0
+  set n-later-than-planned 0
+  set n-structural-skips 0
 
   set home-patches patches with [ pycor < 0 or (pxcor < 0 and pycor >= 0) ]
   ask home-patches [ set pcolor green ]
@@ -108,6 +126,9 @@ to setup
       assign-profile
       set departure-slot -1
       set visit-start-slot -1
+      set planned-slot -2
+      set prev-start-slot -1
+      set fixed-start-slot -2
       set strategies n-values number-strategies [ random-strategy ]
       set best-strategy first strategies
       update-strategies
@@ -137,7 +158,9 @@ to go
     update-strategies
     set prediction predict-attendance best-strategy sublist history 0 memory-size
     set prediction apply-info-signal prediction
-    if choose-now? prediction [
+    let best best-start-slot prediction
+    if planned-slot = -2 [ set planned-slot best ]
+    if best = current-slot [
       set attend? true
       set decided? true
       set went-today? true
@@ -195,6 +218,7 @@ to start-new-day
     set attend? false
     set departure-slot -1
     set visit-start-slot -1
+    set planned-slot -2
     if visualize? [
       set color white
       move-to-empty-one-of home-patches
@@ -225,12 +249,32 @@ to record-metrics [over?]
   set n-slots-recorded n-slots-recorded + 1
   if over? [ set n-slots-over n-slots-over + 1 ]
   if attendance > peak-so-far [ set peak-so-far attendance ]
+  set slot-occupancy-sums replace-item current-slot slot-occupancy-sums (item current-slot slot-occupancy-sums + attendance)
   if current-slot = n-slots - 1 [
+    set n-days-recorded n-days-recorded + 1
     set n-agent-days n-agent-days + count turtles
     set n-skips n-skips + count turtles with [ skipped-today? ]
     set n-visits n-visits + count turtles with [ went-today? ]
     set n-good-visits n-good-visits + count turtles with [ good-visit? ]
+    set n-structural-skips n-structural-skips + count turtles with [ skipped-today? and empty? allowed-start-slots ]
+    ask turtles [ record-start-shift ]
   ]
+end
+
+;; Start-slot movement across consecutive measured days (turtle procedure).
+to record-start-shift
+  if went-today? [
+    if prev-start-slot >= 0 [
+      set n-start-pairs n-start-pairs + 1
+      if visit-start-slot != prev-start-slot [ set n-start-changes n-start-changes + 1 ]
+      set sum-start-shift sum-start-shift + abs (visit-start-slot - prev-start-slot)
+    ]
+    if planned-slot >= 0 and visit-start-slot > planned-slot [ set n-later-than-planned n-later-than-planned + 1 ]
+  ]
+  set prev-start-slot ifelse-value went-today? [ visit-start-slot ] [ -1 ]
+  ifelse fixed-start-slot = -2
+    [ set fixed-start-slot ifelse-value went-today? [ visit-start-slot ] [ -1 ] ]
+    [ if fixed-start-slot >= 0 and (not went-today? or visit-start-slot != fixed-start-slot) [ set fixed-start-slot -1 ] ]
 end
 
 to update-color  ;; turtle procedure
@@ -255,6 +299,7 @@ end
 to load-seed-means
   ;; fallback = scaled weekday-pooled means from params.json seed_history
   set seed-means map [ m -> (list m) ] [ 10.48 10.48 15.38 13.25 13.59 15.12 14.18 16.28 19.18 19.27 21.80 22.15 23.90 23.56 27.51 26.71 26.06 26.88 29.15 27.97 30.58 30.05 31.32 28.80 28.78 26.72 25.80 24.59 26.87 22.70 26.23 ]
+  set real-profile map [ s -> mean s ] seed-means
   let path seed-file-path
   if path = "" [ stop ]
   let rows csv:from-file path
@@ -270,6 +315,7 @@ to load-seed-means
     ]
   ]
   let loaded []
+  let pooled []
   foreach but-first rows [ row ->
     let series []
     foreach weekday-cols [ col ->
@@ -288,10 +334,14 @@ to load-seed-means
     ]
     if not empty? series [
       set loaded lput series loaded
+      let m false
+      if length row > mean-col [ set m coerce-number-or-none item mean-col row ]
+      set pooled lput (ifelse-value is-number? m [ m ] [ mean series ]) pooled
     ]
   ]
   if not empty? loaded [
     set seed-means pad-or-trim loaded n-slots
+    set real-profile pad-or-trim pooled n-slots
   ]
 end
 
@@ -400,6 +450,41 @@ to-report lag1-autocorr
   report num / sqrt (ss-x * ss-y)
 end
 
+to-report start-change-rate
+  if n-start-pairs = 0 [ report 0 ]
+  report n-start-changes / n-start-pairs
+end
+
+to-report mean-start-shift
+  if n-start-pairs = 0 [ report 0 ]
+  report sum-start-shift / n-start-pairs
+end
+
+to-report later-than-planned-share
+  if n-visits = 0 [ report 0 ]
+  report n-later-than-planned / n-visits
+end
+
+to-report fixed-start-share
+  let eligible turtles with [ not empty? allowed-start-slots ]
+  if not any? eligible or n-days-recorded = 0 [ report 0 ]
+  report count eligible with [ fixed-start-slot >= 0 ] / count eligible
+end
+
+to-report structural-skip-rate
+  if n-agent-days = 0 [ report 0 ]
+  report n-structural-skips / n-agent-days
+end
+
+to-report occupancy-profile
+  if n-days-recorded = 0 [ report n-values n-slots [ 0 ] ]
+  report map [ x -> x / n-days-recorded ] slot-occupancy-sums
+end
+
+to-report profile-rmse
+  report sqrt mean (map [ [ a b ] -> (a - b) * (a - b) ] occupancy-profile real-profile)
+end
+
 to-report current-slot-label
   if not is-list? slot-labels [ report "--" ]
   if current-slot >= length slot-labels [ report "--" ]
@@ -447,11 +532,12 @@ end
 ;; where p(t) is the prediction at time t, x(t) is the attendance of the bar at time t,
 ;; a(t) is the weight for time t, c is a constant, and MEMORY-SIZE is an external parameter.
 to-report predict-attendance [strategy subhistory]
+  ;; Gym extension: the utility rule scales the constant by capacity (see predictor-scale).
   ;; the first element of the strategy is the constant, c, in the prediction formula.
   ;; one can think of it as the the agent's prediction of the bar's attendance
   ;; in the absence of any other data
   ;; then we multiply each week in the history by its respective weight
-  report n-agents * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
+  report predictor-scale * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
 end
 
 ;; In this model it doesn't really matter exactly which patch
@@ -464,6 +550,12 @@ to move-to-empty-one-of [locations]  ;; turtle procedure
   ifelse any? empties
     [ move-to one-of empties ]
     [ if any? locations [ move-to one-of locations ] ]
+end
+
+to-report predictor-scale
+  ;; Original El Farol scales the constant by population. Per-slot occupancy lives on the
+  ;; capacity scale, so the utility rule uses capacity; legacy keeps n-agents.
+  report ifelse-value decision-rule = "utility" [ capacity ] [ n-agents ]
 end
 
 ; Copyright 2007 Uri Wilensky. Gym-slot extension 2026.
@@ -535,6 +627,10 @@ plotxy plot-x-max capacity</update>
     </plot>
     <input x="1040" y="10" width="175" height="60" variable="population-seed" type="number" multiline="false">42</input>
     <input x="1040" y="80" width="175" height="60" variable="simulation-seed" type="number" multiline="false">1234</input>
+    <chooser x="1040" y="210" height="60" variable="decision-rule" current="0" width="175" display="decision-rule">
+      <choice type="string" value="legacy"></choice>
+      <choice type="string" value="utility"></choice>
+    </chooser>
     <slider x="1040" y="150" width="175" height="50" display="workout-slots" variable="workout-slots" min="1" max="6" step="1" default="2.0" direction="Horizontal"></slider>
   </widgets>
   <info><![CDATA[
@@ -1349,7 +1445,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric></metrics>
+      <metric>simulation-seed</metric><metric>start-change-rate</metric><metric>mean-start-shift</metric><metric>later-than-planned-share</metric><metric>fixed-start-share</metric><metric>structural-skip-rate</metric><metric>occupancy-profile</metric><metric>profile-rmse</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
           <value value="&quot;none&quot;" />
@@ -1385,7 +1481,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <enumeratedValueSet variable="visualize?">
           <value value="false" />
         </enumeratedValueSet>
-      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
+      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet><enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet></constants>
     </experiment>
     <experiment name="info-memory-grid" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
       <setup>set simulation-seed 100000 + population-seed setup</setup>
@@ -1397,7 +1493,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric></metrics>
+      <metric>simulation-seed</metric><metric>start-change-rate</metric><metric>mean-start-shift</metric><metric>later-than-planned-share</metric><metric>fixed-start-share</metric><metric>structural-skip-rate</metric><metric>occupancy-profile</metric><metric>profile-rmse</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
           <value value="&quot;none&quot;" />
@@ -1433,7 +1529,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <enumeratedValueSet variable="visualize?">
           <value value="false" />
         </enumeratedValueSet>
-      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /><value value="11" /><value value="12" /><value value="13" /><value value="14" /><value value="15" /><value value="16" /><value value="17" /><value value="18" /><value value="19" /><value value="20" /><value value="21" /><value value="22" /><value value="23" /><value value="24" /><value value="25" /><value value="26" /><value value="27" /><value value="28" /><value value="29" /><value value="30" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
+      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /><value value="11" /><value value="12" /><value value="13" /><value value="14" /><value value="15" /><value value="16" /><value value="17" /><value value="18" /><value value="19" /><value value="20" /><value value="21" /><value value="22" /><value value="23" /><value value="24" /><value value="25" /><value value="26" /><value value="27" /><value value="28" /><value value="29" /><value value="30" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet><enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet></constants>
     </experiment>
     <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="31">
       <setup>set simulation-seed 100000 + population-seed setup</setup>
@@ -1445,7 +1541,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric></metrics>
+      <metric>simulation-seed</metric><metric>start-change-rate</metric><metric>mean-start-shift</metric><metric>later-than-planned-share</metric><metric>fixed-start-share</metric><metric>structural-skip-rate</metric><metric>occupancy-profile</metric><metric>profile-rmse</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
           <value value="&quot;none&quot;" />
@@ -1477,7 +1573,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <enumeratedValueSet variable="visualize?">
           <value value="false" />
         </enumeratedValueSet>
-      <enumeratedValueSet variable="population-seed"><value value="1" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
+      <enumeratedValueSet variable="population-seed"><value value="1" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet><enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet></constants>
     </experiment>
   </experiments>
 

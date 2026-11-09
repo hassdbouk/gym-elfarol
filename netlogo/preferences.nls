@@ -109,10 +109,12 @@ to-report slot-utility [slot expected-count]
   report direction * expected-count / capacity - time-cost
 end
 
-to-report choose-now? [current-prediction]
+;; Best remaining start slot (-1 if every candidate is excluded). The agent goes
+;; now only if this is the current slot.
+to-report best-start-slot [current-prediction]
   let candidates filter [s -> s >= current-slot] allowed-start-slots
-  if not member? current-slot candidates [ report false ]
-  if must-go? and current-slot = last candidates [ report true ]
+  if not member? current-slot candidates [ report -1 ]
+  if must-go? and current-slot = last candidates [ report current-slot ]
   let best-slot -1
   let best-score -1.0E20
   foreach candidates [ s ->
@@ -132,7 +134,11 @@ to-report choose-now? [current-prediction]
       if take? [ set best-slot s set best-score score ]
     ]
   ]
-  report best-slot = current-slot
+  report best-slot
+end
+
+to-report choose-now? [current-prediction]
+  report best-start-slot current-prediction = current-slot
 end
 
 to export-agent-profiles [path]
