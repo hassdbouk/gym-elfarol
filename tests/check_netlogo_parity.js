@@ -18,14 +18,20 @@ const history = G.parseSeedHistory(fs.readFileSync(path.join(root, 'netlogo/seed
 // NetLogo writes list reporters as "[a b c]".
 const netlogoList = text => text.replace(/^\[|\]$/g, '').trim().split(/\s+/).filter(Boolean).map(Number);
 const close = (a, b) => Math.abs(a - b) < 1e-8;
+const UTILITY_COLUMNS = {
+  'workout-value': 'workoutValue', 'crowd-penalty': 'crowdPenalty', 'comfort-threshold': 'comfortThreshold', 'time-weight': 'timeWeight',
+  'taste-weight': 'tasteWeight', 'choice-temperature': 'temperature', 'outcome-learning?': 'outcomeLearning', 'learning-rate': 'learningRate', 'learning-weight': 'learningWeight',
+};
 let compared = 0;
 for (const row of rows) {
   const o = {
     agentCount: +row['n-agents'], capacity: +row.capacity, memory: +row['memory-size'], strategies: +row['number-strategies'],
     mode: row['info-mode'], delay: +row.delay, maxDays: +row['[step]'] / 31, burnIn: +row['burn-in-days'], duration: +row['workout-slots'],
     populationSeed: +row['population-seed'], simulationSeed: +row['simulation-seed'], mustGo: row['must-go?'] === 'true',
-    decisionRule: row['decision-rule'] || 'legacy',
+    decisionRule: row['decision-rule'] || 'legacy', // tables written before the switch are legacy runs
   };
+  // Utility-rule globals; tables that do not record them fall back to the shared defaults.
+  for (const [column, key] of Object.entries(UTILITY_COLUMNS)) if (column in row) o[key] = key === 'outcomeLearning' ? row[column] === 'true' : Number(row[column]);
   assert.equal(row['seed-from-data?'], 'true');
   const s = new G.Simulation(rules, history, o);
   while (!s.done) s.step();

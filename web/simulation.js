@@ -134,24 +134,92 @@
     const denominator = Math.sqrt(x.reduce((s, v) => s + (v - mx) ** 2, 0) * y.reduce((s, v) => s + (v - my) ** 2, 0));
     return denominator ? numerator / denominator : 0;
   }
+
+  // ---------- Utility rule (decisionRule = "utility") ----------
+  const MODULUS = 2147483647;
+  // a * b mod (2^31 - 1), split so every intermediate stays exact in a double
+  // (NetLogo numbers are doubles too, so both engines get identical integers).
+  function mulmod(a, b) {
+    return ((Math.floor(a / 65536) * b) % MODULUS * 65536 + (a % 65536) * b) % MODULUS;
+  }
+  function hashStep(h, k) {
+    const x = (h + k + 1) % MODULUS;
+    return (mulmod(x, x) * 16807) % MODULUS;
+  }
+  // Counter-based uniform draw for (seed, agent, day, slot). The same agent gets the
+  // same draw in every information mode, so condition comparisons are paired.
+  function choiceDraw(seed, agentId, day, slot) {
+    let h = seed % (MODULUS - 1) + 1;
+    for (const k of [agentId, day, slot, 0]) h = hashStep(h, k);
+    return h / MODULUS;
+  }
+  // P(x) = (max(0, x - theta) / (1 - theta))^2, paid by every agent.
+  function crowdingPenalty(x, threshold) {
+    const r = Math.max(0, x - threshold) / (1 - threshold);
+    return r * r;
+  }
+  // U_i(s) = V - wP * P(x) + wC * d_i * min(x, 1) - wT * T_i(s) + wR * R_i(s), x = estimate / C.
+  function choiceUtility(agent, slot, estimate, options, rules) {
+    const x = Math.max(0, Math.min(options.agentCount, estimate)) / options.capacity;
+    const flex = rules.flexibility[agent.flexibility].value;
+    const timeCost = preferenceDistance(agent, slot, rules) / Math.max(1, flex < 0 ? CLOSE - OPEN : flex);
+    const reinforcement = options.outcomeLearning ? agent.reinforcement[slot] : 0;
+    return options.workoutValue - options.crowdPenalty * crowdingPenalty(x, options.comfortThreshold)
+      + options.tasteWeight * rules.crowding[agent.crowding].value * Math.min(x, 1)
+      - options.timeWeight * timeCost + options.learningWeight * reinforcement;
+  }
+  // Decide at the current slot among {now, later allowed starts, skip (utility 0)}.
+  // Returns { go, best }: best is the argmax start (-1 when skipping is best).
+  // With temperature > 0 the agent goes now with logit probability; repeated each
+  // slot this reproduces a single logit choice over the whole day.
+  function utilityDecision(agent, currentSlot, currentEstimate, day, options, rules) {
+    const candidates = agent.allowedStarts.filter(s => s >= currentSlot);
+    if (!candidates.includes(currentSlot)) return { go: false, best: -1 };
+    if (options.mustGo && currentSlot === candidates.at(-1)) return { go: true, best: currentSlot };
+    const utilities = candidates.map(s => choiceUtility(agent, s, s === currentSlot ? currentEstimate : agent.forecasts[s], options, rules));
+    let best = -1, bestUtility = -Infinity;
+    candidates.forEach((slot, i) => {
+      const u = utilities[i];
+      if (u > bestUtility || (u === bestUtility && agent.tiePriorities[slot] > agent.tiePriorities[best])) { best = slot; bestUtility = u; }
+    });
+    const planned = bestUtility >= 0 ? best : -1;
+    if (options.temperature <= 0) return { go: planned === currentSlot, best: planned };
+    const top = Math.max(0, ...utilities);
+    let total = 0;
+    for (const u of utilities) total += Math.exp((u - top) / options.temperature);
+    total += Math.exp((0 - top) / options.temperature);
+    const pNow = Math.exp((utilities[0] - top) / options.temperature) / total;
+    return { go: choiceDraw(options.simulationSeed, agent.id, day, currentSlot) < pNow, best: planned };
+  }
+
+  // Model defaults for the decision rule and utility weights (NetLogo widget defaults match).
+  const DEFAULTS = Object.freeze({
+    decisionRule: "utility", workoutValue: 1, crowdPenalty: 1, comfortThreshold: 0.8, timeWeight: 0.5, tasteWeight: 0.25,
+    temperature: 0.1, outcomeLearning: false, learningRate: 0.2, learningWeight: 0.5,
+  });
   class Simulation {
     constructor(rules, seedHistory, options = {}) {
       this.rules = rules;
-      this.options = { agentCount: 100, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, decisionRule: "legacy", ...options };
+      this.options = { agentCount: 100, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...DEFAULTS, ...options };
       const o = this.options;
       for (const k of ["agentCount", "capacity", "memory", "strategies", "delay", "maxDays", "duration"]) if (!Number.isInteger(o[k]) || o[k] < 1) throw Error(`Invalid ${k}`);
       if (o.duration > SLOTS || !["none", "live", "delayed"].includes(o.mode) || !["legacy", "utility"].includes(o.decisionRule)) throw Error("Invalid simulation configuration");
+      for (const k of ["workoutValue", "crowdPenalty", "tasteWeight", "timeWeight", "temperature", "learningWeight"]) if (!Number.isFinite(o[k]) || o[k] < 0) throw Error(`Invalid ${k}`);
+      if (!(o.comfortThreshold >= 0 && o.comfortThreshold < 1) || !(o.learningRate >= 0 && o.learningRate <= 1)) throw Error("Invalid utility configuration");
       if (![o.populationSeed, o.simulationSeed].every(x => Number.isInteger(x) && x >= 0 && x <= 2147483646)) throw Error("Seeds must be integers from 0 to 2147483646");
       const random = rng(o.simulationSeed);
-      this.agents = profiles(o.agentCount, o.populationSeed, rules, o.duration).map(agent => ({ ...agent, prevStart: -1, fixedStart: -2, strategies: Array.from({ length: o.strategies }, () => Array.from({ length: o.memory + 1 }, () => 1 - random() * 2)) }));
+      this.agents = profiles(o.agentCount, o.populationSeed, rules, o.duration).map(agent => ({ ...agent, prevStart: -1, fixedStart: -2, forecasts: Array(SLOTS).fill(0), reinforcement: Array(SLOTS).fill(0), strategies: Array.from({ length: o.strategies }, () => Array.from({ length: o.memory + 1 }, () => 1 - random() * 2)) }));
       this.realProfile = seedHistory.map(series => Number.isFinite(series.mean) ? series.mean : mean(series));
       this.slotHistories = seedHistory.map(series => Array.from({ length: o.memory * 2 }, (_, i) => series[i % series.length]));
       this.ticks = 0; this.day = 1; this.slot = 0; this.done = false; this.history = []; this.todayAttendance = []; this.peak = 0; this.last = null;
       this.metrics = { slots: 0, over: 0, visits: 0, good: 0, skips: 0, agentDays: 0, peak: 0, occupancy: [], days: 0, slotSums: Array(SLOTS).fill(0), startPairs: 0, startChanges: 0, startShift: 0, laterThanPlanned: 0, structuralSkips: 0 };
-      this.newDay();
+      this.newDay(false);
     }
-    newDay() {
+    newDay(forecast = true) {
       this.todayAttendance = [];
+      // Utility rule: every allowed start is forecast once per day with the agent's best
+      // predictor on that slot's own history (yesterday and earlier only).
+      if (forecast && this.options.decisionRule === "utility") for (const a of this.agents) for (const s of a.allowedStarts) a.forecasts[s] = currentPrediction(a, this.slotHistories[s], this.options);
       for (const a of this.agents) Object.assign(a, { decided: false, attending: false, wentToday: false, skippedToday: false, goodVisit: false, departure: -1, startSlot: -1, plannedSlot: -2, startedThisSlot: false, leftThisSlot: false, prediction: null });
     }
     step() {
@@ -164,17 +232,24 @@
       }
       for (const a of this.agents) {
         if (a.decided || !a.allowedStarts.includes(slot)) continue;
-        let prediction = currentPrediction(a, this.slotHistories[slot], o);
+        const utilityRule = o.decisionRule === "utility";
+        // Information blends into the current slot only; later slots keep the day-start forecast.
+        let prediction = utilityRule ? a.forecasts[slot] : currentPrediction(a, this.slotHistories[slot], o);
         if (o.mode === "live" && slot > 0) prediction = 0.5 * prediction + 0.5 * this.todayAttendance[slot - 1];
         if (o.mode === "delayed" && slot >= o.delay) prediction = 0.5 * prediction + 0.5 * this.todayAttendance[slot - o.delay];
         a.prediction = prediction;
-        const best = bestStart(a, slot, prediction, this.slotHistories, o, this.rules);
+        const decision = utilityRule ? utilityDecision(a, slot, prediction, day, o, this.rules) : null;
+        const best = utilityRule ? decision.best : bestStart(a, slot, prediction, this.slotHistories, o, this.rules);
         if (a.plannedSlot === -2) a.plannedSlot = best; // first-choice slot at the agent's first decision today
-        if (best === slot) Object.assign(a, { decided: true, attending: true, wentToday: true, goodVisit: true, departure: slot + o.duration, startSlot: slot, startedThisSlot: true });
+        if (utilityRule ? decision.go : best === slot) Object.assign(a, { decided: true, attending: true, wentToday: true, goodVisit: true, departure: slot + o.duration, startSlot: slot, startedThisSlot: true });
       }
       const attendance = this.agents.filter(a => a.attending).length;
       if (attendance > o.capacity) for (const a of this.agents) if (a.attending) a.goodVisit = false;
       if (slot === SLOTS - 1) for (const a of this.agents) if (!a.decided) { a.decided = true; a.skippedToday = true; }
+      // Optional outcome learning: R(s) <- R(s) + alpha * (r - R(s)), r = +1 good / -1 bad visit.
+      if (slot === SLOTS - 1 && o.decisionRule === "utility" && o.outcomeLearning) for (const a of this.agents) if (a.wentToday) {
+        a.reinforcement[a.startSlot] += o.learningRate * ((a.goodVisit ? 1 : -1) - a.reinforcement[a.startSlot]);
+      }
       this.slotHistories[slot] = [attendance, ...this.slotHistories[slot]].slice(0, 2 * o.memory);
       this.todayAttendance.push(attendance); this.history.push(attendance); this.peak = Math.max(this.peak, attendance);
       if (day > o.burnIn) {
@@ -218,12 +293,12 @@
         "fixed-start-share": eligible.length && m.days ? eligible.filter(a => a.fixedStart >= 0).length / eligible.length : 0,
         "structural-skip-rate": m.agentDays ? m.structuralSkips / m.agentDays : 0,
         "occupancy-profile": profile,
-        "profile-rmse": Math.sqrt(mean(profile.map((x, i) => (x - this.realProfile[i]) ** 2))),
+        "profile-rmse": Math.sqrt(mean(profile.map((x, i) => (x - this.realProfile[i]) * (x - this.realProfile[i])))),
       };
     }
     profileExport() {
       return { populationSeed: this.options.populationSeed, simulationSeed: this.options.simulationSeed, options: this.options, rules: this.rules, agents: this.agents.map(({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts }) => ({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts })) };
     }
   }
-  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, bestStart, chooseStart, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
+  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, bestStart, chooseStart, choiceUtility, crowdingPenalty, utilityDecision, choiceDraw, mulmod, DEFAULTS, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
 });

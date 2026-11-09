@@ -62,6 +62,8 @@ turtles-own [
   planned-slot          ;; best slot at the first decision today (-2 = not yet decided)
   prev-start-slot       ;; start slot on the previous measured day (-1 = no visit)
   fixed-start-slot      ;; -2 unset, -1 changed or missed a day, else the constant start
+  slot-forecasts        ;; utility rule: day-start forecast for every allowed start slot
+  slot-reinforcement    ;; utility rule: learned value of each start slot (outcome-learning?)
 ]
 
 to setup
@@ -129,6 +131,8 @@ to setup
       set planned-slot -2
       set prev-start-slot -1
       set fixed-start-slot -2
+      set slot-forecasts n-values n-slots [ 0 ]
+      set slot-reinforcement n-values n-slots [ 0 ]
       set strategies n-values number-strategies [ random-strategy ]
       set best-strategy first strategies
       update-strategies
@@ -155,12 +159,23 @@ to go
   ;; actual attendance is counted only after every agent has decided.
   ask turtles with [attend? and departure-slot <= current-slot] [ set attend? false ]
   ask turtles with [not decided? and willing-to-go?] [
-    update-strategies
-    set prediction predict-attendance best-strategy sublist history 0 memory-size
-    set prediction apply-info-signal prediction
-    let best best-start-slot prediction
+    let best -1
+    let go-now? false
+    ifelse decision-rule = "utility" [
+      ;; Information blends into the current slot only; later slots keep the day-start forecast.
+      set prediction apply-info-signal (item current-slot slot-forecasts)
+      let decision utility-decision prediction
+      set go-now? first decision
+      set best last decision
+    ] [
+      update-strategies
+      set prediction predict-attendance best-strategy sublist history 0 memory-size
+      set prediction apply-info-signal prediction
+      set best best-start-slot prediction
+      set go-now? best = current-slot
+    ]
     if planned-slot = -2 [ set planned-slot best ]
-    if best = current-slot [
+    if go-now? [
       set attend? true
       set decided? true
       set went-today? true
@@ -195,6 +210,15 @@ to go
   if visualize? and over? [
     ask crowded-patch [ set plabel "CROWDED" ]
   ]
+  ;; Optional outcome learning once every visit's outcome is final:
+  ;; R(s) <- R(s) + learning-rate * (r - R(s)), r = +1 good visit / -1 bad visit.
+  if current-slot = n-slots - 1 and decision-rule = "utility" and outcome-learning? [
+    ask turtles with [ went-today? ] [
+      let r ifelse-value good-visit? [ 1 ] [ -1 ]
+      let old item visit-start-slot slot-reinforcement
+      set slot-reinforcement replace-item visit-start-slot slot-reinforcement (old + learning-rate * (r - old))
+    ]
+  ]
 
   set history fput attendance but-last history
   set slot-histories replace-item current-slot slot-histories history
@@ -209,6 +233,8 @@ end
 
 to start-new-day
   set current-day current-day + 1
+  ;; Utility rule: forecast every allowed start once per day from yesterday's histories.
+  if decision-rule = "utility" [ ask turtles [ compute-daily-forecasts ] ]
   set today-attendance []
   ask turtles [
     set decided? false
@@ -627,11 +653,20 @@ plotxy plot-x-max capacity</update>
     </plot>
     <input x="1040" y="10" width="175" height="60" variable="population-seed" type="number" multiline="false">42</input>
     <input x="1040" y="80" width="175" height="60" variable="simulation-seed" type="number" multiline="false">1234</input>
-    <chooser x="1040" y="210" height="60" variable="decision-rule" current="0" width="175" display="decision-rule">
+    <chooser x="1040" y="210" height="60" variable="decision-rule" current="1" width="175" display="decision-rule">
       <choice type="string" value="legacy"></choice>
       <choice type="string" value="utility"></choice>
     </chooser>
     <slider x="1040" y="150" width="175" height="50" display="workout-slots" variable="workout-slots" min="1" max="6" step="1" default="2.0" direction="Horizontal"></slider>
+    <slider x="1225" step="0.05" y="10" max="3" width="190" display="workout-value" height="50" min="0" direction="Horizontal" default="1.0" variable="workout-value"></slider>
+    <slider x="1225" step="0.05" y="65" max="5" width="190" display="crowd-penalty" height="50" min="0" direction="Horizontal" default="1.0" variable="crowd-penalty"></slider>
+    <slider x="1225" step="0.01" y="120" max="0.95" width="190" display="comfort-threshold" height="50" min="0" direction="Horizontal" default="0.8" variable="comfort-threshold"></slider>
+    <slider x="1225" step="0.05" y="175" max="3" width="190" display="time-weight" height="50" min="0" direction="Horizontal" default="0.5" variable="time-weight"></slider>
+    <slider x="1225" step="0.05" y="230" max="1" width="190" display="taste-weight" height="50" min="0" direction="Horizontal" default="0.25" variable="taste-weight"></slider>
+    <slider x="1225" step="0.01" y="285" max="1" width="190" display="choice-temperature" height="50" min="0" direction="Horizontal" default="0.1" variable="choice-temperature"></slider>
+    <slider x="1225" step="0.05" y="340" max="1" width="190" display="learning-rate" height="50" min="0" direction="Horizontal" default="0.2" variable="learning-rate"></slider>
+    <slider x="1225" step="0.05" y="395" max="2" width="190" display="learning-weight" height="50" min="0" direction="Horizontal" default="0.5" variable="learning-weight"></slider>
+    <switch x="1225" y="450" height="40" on="false" variable="outcome-learning?" width="190" display="outcome-learning?"></switch>
   </widgets>
   <info><![CDATA[
 # Individual gym schedules and preferences

@@ -141,6 +141,98 @@ to-report choose-now? [current-prediction]
   report best-start-slot current-prediction = current-slot
 end
 
+;; ---------- Utility rule (decision-rule = "utility"); mirrors web/simulation.js ----------
+
+;; Forecast every allowed start slot once per day (turtle procedure).
+to compute-daily-forecasts
+  foreach allowed-start-slots [ s ->
+    set slot-forecasts replace-item s slot-forecasts (forecast-for item s slot-histories)
+  ]
+end
+
+;; Best strategy on one slot's history (same scoring as update-strategies), no side effects.
+to-report forecast-for [hist]
+  let best-score 1.0E20
+  let chosen first strategies
+  foreach strategies [ the-strategy ->
+    let score 0
+    let week 1
+    repeat memory-size [
+      set score score + abs (item (week - 1) hist - predict-attendance the-strategy sublist hist week (week + memory-size))
+      set week week + 1
+    ]
+    if score <= best-score [
+      set best-score score
+      set chosen the-strategy
+    ]
+  ]
+  report predict-attendance chosen sublist hist 0 memory-size
+end
+
+;; P(x) = (max(0, x - comfort-threshold) / (1 - comfort-threshold))^2
+to-report crowding-penalty-at [x]
+  let r (max (list 0 (x - comfort-threshold))) / (1 - comfort-threshold)
+  report r * r
+end
+
+;; U(s) = V - wP * P(x) + wC * d * min(x, 1) - wT * T(s) + wR * R(s), x = estimate / capacity
+to-report choice-utility [slot estimate]
+  let x (max (list 0 (min (list n-agents estimate)))) / capacity
+  let flex item 7 (item flexibility-level flexibility-rules)
+  let divisor ifelse-value (flex < 0) [930] [max (list 1 flex)]
+  let time-cost preference-distance slot / divisor
+  let direction item 7 (item crowding-preference crowding-rules)
+  let reinforcement ifelse-value outcome-learning? [ item slot slot-reinforcement ] [ 0 ]
+  report workout-value - crowd-penalty * crowding-penalty-at x + taste-weight * direction * (min (list x 1)) - time-weight * time-cost + learning-weight * reinforcement
+end
+
+;; Choose among {now, later allowed starts, skip (utility 0)}. Reports [go-now? best-slot];
+;; best-slot is -1 when skipping is best. With choice-temperature > 0 the agent goes now
+;; with logit probability, which over the day reproduces one logit choice of start slot.
+to-report utility-decision [current-estimate]
+  let candidates filter [s -> s >= current-slot] allowed-start-slots
+  if not member? current-slot candidates [ report (list false -1) ]
+  if must-go? and current-slot = last candidates [ report (list true current-slot) ]
+  let utilities map [s -> choice-utility s (ifelse-value (s = current-slot) [current-estimate] [item s slot-forecasts])] candidates
+  let best -1
+  let best-u 0
+  let i 0
+  foreach candidates [ s ->
+    let u item i utilities
+    if best < 0 or u > best-u or (u = best-u and item s slot-tie-priorities > item best slot-tie-priorities) [
+      set best s
+      set best-u u
+    ]
+    set i i + 1
+  ]
+  let planned ifelse-value (best-u >= 0) [ best ] [ -1 ]
+  if choice-temperature <= 0 [ report (list (planned = current-slot) planned) ]
+  let top max fput 0 utilities
+  let total 0
+  foreach utilities [ u -> set total total + exp ((u - top) / choice-temperature) ]
+  set total total + exp ((0 - top) / choice-temperature)
+  let p-now exp ((first utilities - top) / choice-temperature) / total
+  report (list (choice-draw who current-day current-slot < p-now) planned)
+end
+
+;; Counter-based uniform draw for (simulation-seed, agent, day, slot): the same agent gets
+;; the same draw in every information mode. Integer steps stay exact in doubles.
+to-report choice-draw [agent-id day slot]
+  let h (simulation-seed mod 2147483646) + 1
+  foreach (list agent-id day slot 0) [ k -> set h hash-step h k ]
+  report h / 2147483647
+end
+
+to-report hash-step [h k]
+  let x (h + k + 1) mod 2147483647
+  report ((mulmod x x) * 16807) mod 2147483647
+end
+
+;; a * b mod (2^31 - 1) without exceeding 2^53 in any intermediate.
+to-report mulmod [a b]
+  report ((((floor (a / 65536)) * b) mod 2147483647) * 65536 + (a mod 65536) * b) mod 2147483647
+end
+
 to export-agent-profiles [path]
   let rows (list ["agent_id" "availability" "time_preference" "flexibility" "crowding" "allowed_start_slots" "tie_priorities" "population_seed" "simulation_seed"])
   foreach sort turtles [ agent ->

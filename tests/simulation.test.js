@@ -6,7 +6,8 @@ const G = require('../web/simulation.js');
 const root = path.resolve(__dirname, '..');
 const rules = G.parseRules(fs.readFileSync(path.join(root, 'web/profile-rules.csv'), 'utf8'));
 const seed = G.parseSeedHistory(fs.readFileSync(path.join(root, 'netlogo/seed_history.csv'), 'utf8'));
-const create = options => new G.Simulation(rules, seed, { maxDays: 1, burnIn: 0, ...options });
+// Tests pin the legacy rule unless they set decisionRule; utility-rule tests opt in.
+const create = options => new G.Simulation(rules, seed, { maxDays: 1, burnIn: 0, decisionRule: 'legacy', ...options });
 const agent = changes => ({ availability: 2, preference: 0, flexibility: 2, crowding: 0, tiePriorities: Array(31).fill(0), ...changes });
 
 test('confirmed availability windows and four named preferences are loaded', () => {
@@ -259,8 +260,134 @@ test('legacy predictor constant scales with population, utility with capacity', 
     assert(s.agents.filter(a => a.prediction !== null).every(a => a.prediction === expected));
   }
 });
-test('decision rule defaults to legacy, is validated, and leaves populations unchanged', () => {
-  assert.equal(create().options.decisionRule, 'legacy');
+test('decision rule defaults to utility, is validated, and leaves populations unchanged', () => {
+  assert.equal(new G.Simulation(rules, seed, {}).options.decisionRule, 'utility');
   assert.throws(() => create({ decisionRule: 'other' }));
   assert.deepEqual(create({ decisionRule: 'utility', populationSeed: 9 }).profileExport().agents, create({ populationSeed: 9 }).profileExport().agents);
+});
+
+// ---------- Utility rule: forecasts, utility, logit choice, outcome learning ----------
+const utilityOptions = { ...G.DEFAULTS, agentCount: 100, capacity: 37, mustGo: false, simulationSeed: 7 };
+const flexibleAgent = changes => {
+  const a = { id: 0, ...agent({ availability: 2, preference: 3, flexibility: 3, crowding: 0 }), reinforcement: Array(31).fill(0), forecasts: Array(31).fill(0), ...changes };
+  a.allowedStarts ||= G.allowedStarts(a, rules, 2);
+  a.tiePriorities = Array.from({ length: 31 }, (_, i) => i / 31);
+  return a;
+};
+const utilitySim = options => new G.Simulation(rules, seed, { maxDays: 1, burnIn: 0, decisionRule: 'utility', ...options });
+
+test('utility rule forecasts every allowed start at day start from past history only', () => {
+  const s = utilitySim({ agentCount: 50, mode: 'live', memory: 5, maxDays: 2, populationSeed: 4, simulationSeed: 100004 });
+  const before = s.slotHistories.map(h => [...h]);
+  s.step();
+  const atStart = s.agents.map(a => [...a.forecasts]);
+  for (const a of s.agents) for (const slot of a.allowedStarts) assert.equal(a.forecasts[slot], G.currentPrediction(a, before[slot], s.options));
+  for (let i = 1; i < 31; i++) s.step(); // today's counts enter the histories...
+  assert.deepEqual(s.agents.map(a => a.forecasts), atStart); // ...but not today's forecasts
+  const endOfDay1 = s.slotHistories.map(h => [...h]);
+  s.step(); // day 2 recomputes from the histories as they stood at the end of day 1
+  for (const a of s.agents) for (const slot of a.allowedStarts) assert.equal(a.forecasts[slot], G.currentPrediction(a, endOfDay1[slot], s.options));
+});
+test('information changes only the current-slot estimate', () => {
+  const runs = Object.fromEntries(['none', 'live', 'delayed'].map(mode => [mode, utilitySim({ mode, memory: 5, populationSeed: 2, simulationSeed: 100002 })]));
+  for (let slot = 0; slot < 6; slot++) for (const s of Object.values(runs)) s.step();
+  assert.deepEqual(runs.none.agents.map(a => a.forecasts), runs.live.agents.map(a => a.forecasts));
+  assert.deepEqual(runs.none.agents.map(a => a.forecasts), runs.delayed.agents.map(a => a.forecasts));
+  let checked = 0;
+  for (const [s, lag] of [[runs.live, 1], [runs.delayed, 2]]) for (const a of s.agents) {
+    if (!a.allowedStarts.includes(5) || (a.decided && a.startSlot !== 5)) continue;
+    assert.equal(a.prediction, 0.5 * a.forecasts[5] + 0.5 * s.todayAttendance[5 - lag]); checked++;
+  }
+  for (const a of runs.none.agents) if (a.allowedStarts.includes(5) && !(a.decided && a.startSlot !== 5)) assert.equal(a.prediction, a.forecasts[5]);
+  assert(checked > 0);
+});
+test('utility weights follow the written formula', () => {
+  const a = flexibleAgent({ crowding: 1, preference: 0, flexibility: 1 }); // busy-liker, morning, 3-hour flexibility
+  const o = { ...utilityOptions, outcomeLearning: true };
+  a.reinforcement[14] = 0.4;
+  const x = 33.3 / 37, penalty = ((x - 0.8) / 0.2) ** 2, timeCost = 120 / 180; // 13:30 is 120 minutes past the last morning start (11:30)
+  assert(Math.abs(G.choiceUtility(a, 14, 33.3, o, rules) - (1 - penalty + 0.25 * x - 0.5 * timeCost + 0.5 * 0.4)) < 1e-12);
+  assert.equal(G.crowdingPenalty(0.8, 0.8), 0); assert.equal(G.crowdingPenalty(1, 0.8), 1);
+  assert.equal(G.choiceUtility(flexibleAgent(), 5, -10, utilityOptions, rules), 1); // estimates are clipped at zero
+});
+test('busy-likers peak below capacity; the steep limit recovers the threshold rule', () => {
+  const busy = flexibleAgent({ crowding: 1 });
+  let bestX = 0, bestU = -Infinity;
+  for (let i = 0; i <= 1500; i++) { const x = i / 1000, u = G.choiceUtility(busy, 5, x * 37, utilityOptions, rules); if (u > bestU) { bestU = u; bestX = x; } }
+  assert(bestX > 0.8 && bestX < 0.81, `busy optimum at ${bestX}`);
+  const steep = { ...utilityOptions, comfortThreshold: 0.999, crowdPenalty: 1000, temperature: 0 };
+  for (const crowding of [0, 1, 2]) {
+    assert(G.choiceUtility(flexibleAgent({ crowding }), 5, 36, steep, rules) > 0);
+    assert(G.choiceUtility(flexibleAgent({ crowding }), 5, 38, steep, rules) < 0);
+  }
+});
+test('zero temperature is argmax with tie priorities and a skip option', () => {
+  const o = { ...utilityOptions, temperature: 0 };
+  const a = flexibleAgent({ allowedStarts: [3, 4, 5] });
+  assert.deepEqual(G.utilityDecision(a, 3, 0, 1, o, rules), { go: false, best: 5 }); // equal utilities: highest tie priority wins
+  a.forecasts[4] = a.forecasts[5] = 40;
+  assert.deepEqual(G.utilityDecision(a, 3, 0, 1, o, rules), { go: true, best: 3 });
+  assert.deepEqual(G.utilityDecision(a, 3, 40, 1, o, rules), { go: false, best: -1 }); // every slot over capacity: skip is best
+  assert.deepEqual(G.utilityDecision(a, 5, 40, 1, { ...o, mustGo: true }, rules), { go: true, best: 5 }); // must-go at the last allowed start
+  const tiny = { ...utilityOptions, temperature: 1e-6 };
+  a.forecasts[4] = 32; a.forecasts[5] = 40; // U(4) < U(3) = 1: going now is the unique argmax
+  for (let day = 1; day <= 50; day++) assert.equal(G.utilityDecision(a, 3, 20, day, tiny, rules).go, true);
+  a.forecasts[4] = 10; // now U(4) = 1 > U(3), the current slot being crowded
+  for (let day = 1; day <= 50; day++) assert.equal(G.utilityDecision(a, 3, 32, day, tiny, rules).go, false);
+  assert.equal(G.utilityDecision(a, 3, 32, 1, o, rules).go, false);
+});
+test('choice draws are reproducible, uniform and uncorrelated across agents, days and slots', () => {
+  assert.equal(G.mulmod(2147483646, 2147483646), 1); // (-1)^2 mod p
+  assert.equal(G.mulmod(123456789, 987654321), Number((123456789n * 987654321n) % 2147483647n));
+  const draws = [];
+  for (let agentId = 0; agentId < 100; agentId++) for (let day = 1; day <= 10; day++) for (let slot = 0; slot < 31; slot++) draws.push(G.choiceDraw(100001, agentId, day, slot));
+  assert.equal(G.choiceDraw(100001, 5, 3, 7), draws[5 * 310 + 2 * 31 + 7]);
+  const bins = Array(10).fill(0); draws.forEach(u => { assert(u >= 0 && u < 1); bins[Math.floor(u * 10)]++; });
+  const expected = draws.length / 10, chi2 = bins.reduce((s, b) => s + (b - expected) ** 2 / expected, 0);
+  assert(chi2 < 27.9, `chi-square ${chi2}`); // 9 df, p = 0.001
+  const corr = (xs, ys) => { const mx = xs.reduce((a, b) => a + b) / xs.length, my = ys.reduce((a, b) => a + b) / ys.length; let n = 0, dx = 0, dy = 0; xs.forEach((x, i) => { n += (x - mx) * (ys[i] - my); dx += (x - mx) ** 2; dy += (ys[i] - my) ** 2; }); return n / Math.sqrt(dx * dy); };
+  const nextSlot = draws.map((u, i) => [u, draws[i + 1]]).filter((_, i) => i % 31 !== 30);
+  const nextAgent = draws.slice(0, -310).map((u, i) => [u, draws[i + 310]]);
+  for (const pairs of [nextSlot, nextAgent]) assert(Math.abs(corr(pairs.map(p => p[0]), pairs.map(p => p[1]))) < 0.05);
+  assert.notEqual(G.choiceDraw(1, 0, 1, 0), G.choiceDraw(2, 0, 1, 0));
+});
+test('slot-by-slot logit decisions reproduce one logit choice over the whole day', () => {
+  const o = { ...utilityOptions, temperature: 0.2 };
+  const a = flexibleAgent({ allowedStarts: [2, 3, 6, 9, 12] });
+  [10, 30, 34, 20, 45].forEach((f, i) => { a.forecasts[a.allowedStarts[i]] = f; });
+  const utilities = a.allowedStarts.map(s => G.choiceUtility(a, s, a.forecasts[s], o, rules));
+  const weights = [...utilities, 0].map(u => Math.exp(u / o.temperature)), total = weights.reduce((x, y) => x + y);
+  const counts = Array(6).fill(0), days = 20000;
+  for (let day = 1; day <= days; day++) {
+    const chosen = a.allowedStarts.findIndex(s => G.utilityDecision(a, s, a.forecasts[s], day, o, rules).go);
+    counts[chosen < 0 ? 5 : chosen]++;
+  }
+  counts.forEach((c, i) => assert(Math.abs(c / days - weights[i] / total) < 0.012, `option ${i}: ${c / days} vs ${weights[i] / total}`));
+});
+test('outcome learning updates only the visited slot, and only when switched on', () => {
+  for (const outcomeLearning of [false, true]) {
+    const s = utilitySim({ agentCount: 2, capacity: 1, mode: 'none', memory: 1, maxDays: 2, temperature: 0, outcomeLearning });
+    s.agents.forEach(a => { a.allowedStarts = [5]; a.preference = 3; a.strategies = [[-1, 0]]; });
+    runDay(s);
+    assert.equal(s.metrics.good, 0); // both crowd slot 5
+    assert.deepEqual(s.agents[0].reinforcement.filter((_, i) => i !== 5), Array(30).fill(0));
+    assert(Math.abs(s.agents[0].reinforcement[5] - (outcomeLearning ? -0.2 : 0)) < 1e-12);
+    runDay(s);
+    assert(Math.abs(s.agents[0].reinforcement[5] - (outcomeLearning ? -0.36 : 0)) < 1e-12);
+  }
+});
+test('utility rule keeps visit accounting consistent and is reproducible', () => {
+  const make = () => utilitySim({ agentCount: 150, mode: 'delayed', memory: 5, maxDays: 4, populationSeed: 6, simulationSeed: 100006, outcomeLearning: true });
+  const s = make(), t = make();
+  while (!s.done) {
+    const slotsIn = new Map();
+    for (let i = 0; i < 31; i++) { s.step(); t.step(); for (const a of s.agents) if (a.attending) slotsIn.set(a.id, (slotsIn.get(a.id) || 0) + 1); }
+    for (const a of s.agents) { assert([0, 2].includes(slotsIn.get(a.id) || 0)); assert.notEqual(a.wentToday, a.skippedToday); }
+  }
+  assert.deepEqual(s.history, t.history);
+  assert.equal(s.metrics.visits + s.metrics.skips, s.metrics.agentDays);
+  assert.equal(s.history.reduce((a, b) => a + b, 0), 2 * s.metrics.visits);
+});
+test('invalid utility settings are rejected', () => {
+  for (const bad of [{ comfortThreshold: 1 }, { temperature: -0.1 }, { learningRate: 1.5 }, { crowdPenalty: NaN }]) assert.throws(() => utilitySim(bad));
 });
