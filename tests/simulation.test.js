@@ -448,3 +448,29 @@ test('demand-weighted profile mix allocates cells by largest remainder', () => {
   assert.deepEqual(new G.Simulation(weightedRules, seed, { profileMix: 'demand-weighted', populationSeed: 5 }).profileExport().agents, again);
   assert.throws(() => new G.Simulation(rules, seed, { profileMix: 'demand-weighted' }));
 });
+
+// ---------- Browser controls mirror NetLogo globals ----------
+test('every browser control is a NetLogo global with the same default', () => {
+  const { CONTROLS } = require('../web/controls.js');
+  const xml = fs.readFileSync(path.join(root, 'netlogo/GymElFarol.nlogox'), 'utf8');
+  const widgets = {};
+  for (const [, tag, attrs, body] of xml.matchAll(/<(slider|switch|chooser|input)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
+    const attr = name => (attrs.match(new RegExp(`\\b${name}="([^"]*)"`)) || [])[1];
+    const variable = attr('variable');
+    if (!variable) continue;
+    if (tag === 'slider') widgets[variable] = Number(attr('default'));
+    else if (tag === 'switch') widgets[variable] = attr('on') === 'true';
+    else if (tag === 'input') widgets[variable] = Number(body.trim());
+    else widgets[variable] = [...body.matchAll(/value="([^"]*)"/g)].map(m => m[1])[Number(attr('current'))];
+  }
+  const unmapped = CONTROLS.filter(c => !c.netlogo).map(c => c.option);
+  assert.deepEqual(unmapped, ['maxDays']); // BehaviorSpace timeLimit, not a global
+  for (const c of CONTROLS.filter(c => c.netlogo)) {
+    assert(c.netlogo in widgets, `${c.netlogo} is not a NetLogo widget`);
+    assert(c.option in G.DEFAULT_OPTIONS, `${c.option} is not a Simulation option`);
+    assert.deepEqual(widgets[c.netlogo], G.DEFAULT_OPTIONS[c.option], `default of ${c.netlogo}`);
+    if (c.type === 'select') assert.deepEqual(c.choices.map(([v]) => v).sort(), [...xml.match(new RegExp(`variable="${c.netlogo}"[\\s\\S]*?</chooser>`))[0].matchAll(/value="([^"]*)"/g)].map(m => m[1]).sort());
+    if (c.type === 'range') assert(c.min <= G.DEFAULT_OPTIONS[c.option] && G.DEFAULT_OPTIONS[c.option] <= c.max, `${c.option} default outside the browser range`);
+  }
+  assert.equal(new Set(CONTROLS.map(c => c.option)).size, CONTROLS.length);
+});

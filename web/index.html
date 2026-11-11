@@ -12,69 +12,69 @@
         <div>
           <p class="eyebrow">GYM EL FAROL / LIVE MODEL VIEW</p>
           <h1>See the decisions happen.</h1>
-          <p class="lede">Individual schedules, time preferences, flexibility levels, and crowding preferences. Each tick is 30 minutes; each workout lasts one hour.</p>
+          <p class="lede">Individual schedules, time preferences, flexibility levels, and crowding preferences. Each tick is 30 minutes; each workout lasts one hour. Every control below is a NetLogo global with the same meaning.</p>
         </div>
         <div class="status-pill"><span id="status-dot"></span><span id="status">Ready</span></div>
       </header>
 
-      <section class="controls panel">
-        <div class="control-group">
-          <label for="info-mode">Information mode</label>
-          <select id="info-mode">
-            <option value="none">None</option>
-            <option value="live" selected>Live</option>
-            <option value="delayed">Delayed</option>
-          </select>
+      <section class="controls panel" aria-label="Model settings">
+        <div id="controls-basic" class="control-grid"></div>
+        <details class="control-section">
+          <summary>Decision rule and utility weights</summary>
+          <p class="formula">U(slot) = V &minus; wP&middot;P(forecast / capacity) + wC&middot;taste&middot;min(load, 1) &minus; wT&middot;time cost + wR&middot;learned value; staying home = 0. Agents pick among now, later allowed starts and staying home, with logit noise set by the temperature.</p>
+          <div id="controls-utility" class="control-grid"></div>
+        </details>
+        <details class="control-section">
+          <summary>Population and data</summary>
+          <div id="controls-data" class="control-grid"></div>
+        </details>
+        <div class="control-footer">
+          <div class="control-group speed">
+            <label for="tick-duration">Animation speed <output id="tick-duration-value">850 ms per slot</output></label>
+            <input id="tick-duration" type="range" min="20" max="2000" value="850" step="10">
+          </div>
+          <div class="button-row">
+            <button id="reset" class="button secondary">Reset</button>
+            <button id="step" class="button secondary">Step</button>
+            <button id="play" class="button primary">Start simulation</button>
+            <button id="run-to-end" class="button secondary">Run to end</button>
+            <button id="compare" class="button secondary">Compare info modes</button>
+            <button id="defaults" class="button secondary">Reset to calibrated defaults</button>
+          </div>
         </div>
-        <div class="control-group">
-          <label for="agent-count">Agents <output id="agent-count-value">340</output></label>
-          <input id="agent-count" type="range" min="20" max="1000" value="340" step="5">
-        </div>
-        <div class="control-group">
-          <label for="capacity">Capacity <output id="capacity-value">37</output></label>
-          <input id="capacity" type="range" min="10" max="100" value="37">
-        </div>
-        <div class="control-group">
-          <label for="memory-size">Memory <output id="memory-size-value">5 days</output></label>
-          <input id="memory-size" type="range" min="1" max="10" value="5">
-        </div>
-        <div class="control-group">
-          <label for="max-days">Max simulated days</label>
-          <input id="max-days" type="number" min="1" max="365" value="50">
-        </div>
-        <div class="control-group">
-          <label for="tick-duration">Time per tick <output id="tick-duration-value">850 ms</output></label>
-          <input id="tick-duration" type="range" min="50" max="2000" value="850" step="50">
-        </div>
-        <div class="control-group">
-          <label for="population-seed">Population seed</label>
-          <input id="population-seed" type="number" min="0" max="2147483646" step="1" value="42">
-        </div>
-        <div class="control-group">
-          <label for="simulation-seed">Strategy seed</label>
-          <input id="simulation-seed" type="number" min="0" max="2147483646" step="1" value="1234">
-        </div>
-        <div class="button-row">
-          <button id="reset" class="button secondary">Reset</button>
-          <button id="step" class="button secondary">Step</button>
-          <button id="play" class="button primary">Start simulation</button>
-        </div>
+        <p class="muted small">Changing any model setting restarts the run with the same seeds. Animation speed does not.</p>
       </section>
 
-      <details class="panel profile-panel" open>
-        <summary>Population profiles and scheduling rules</summary>
-        <p>Morning: 06:30-12:00 / Afternoon: 12:00-17:00 / Night: 17:00-22:00 / Whenever: any available time.</p>
-        <p>Flexibility extends the preferred start period by 0, 1, or 3 hours, or allows any available start. The entire one-hour workout must fit inside an availability window. Everyone avoids predicted over-capacity slots; crowding preference ranks the remaining choices.</p>
-        <div id="population-summary" class="population-summary"></div>
-        <p>Changing information or memory resets the run while preserving population assignments for the same population seed. A new population seed creates a different balanced assignment.</p>
-        <button type="button" id="export-profiles" class="button secondary">Download agent profiles</button>
-      </details>
       <section class="metrics">
         <article class="metric panel"><span>Current slot</span><strong id="metric-slot">06:30</strong><small id="metric-day">Day 1</small></article>
-        <article class="metric panel"><span>Occupancy</span><strong id="metric-attendance">0 / 37</strong><small id="metric-capacity">Capacity 37</small></article>
-        <article class="metric panel"><span>New arrivals this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 going Â· 0 waiting</small></article>
+        <article class="metric panel"><span>Occupancy</span><strong id="metric-attendance">0 / 37</strong><small id="metric-capacity">Within capacity</small></article>
+        <article class="metric panel"><span>New arrivals this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 left / 0 waiting</small></article>
         <article class="metric panel"><span>Peak so far</span><strong id="metric-peak">0</strong><small id="metric-over">No crowding yet</small></article>
       </section>
+
+      <section class="panel results-panel" aria-labelledby="results-title">
+        <div class="section-heading"><div><p class="eyebrow">RESULTS</p><h2 id="results-title">After burn-in</h2></div><span id="results-note" class="muted">Run past the burn-in to see results.</span></div>
+        <div id="result-tiles" class="result-tiles"></div>
+        <div class="chart-head"><h3>Average occupancy by time of day</h3><div class="legend" id="profile-legend"></div></div>
+        <div class="chart-wrap profile-wrap"><canvas id="profile-chart" aria-label="Average occupancy by slot compared with the real curve and capacity"></canvas><div class="tooltip" id="profile-tooltip" hidden></div></div>
+        <details class="table-view"><summary>Show as table</summary><div id="profile-table"></div></details>
+      </section>
+
+      <section class="panel compare-panel" id="compare-panel" hidden aria-labelledby="compare-title">
+        <div class="section-heading"><div><p class="eyebrow">INFO MODE COMPARISON</p><h2 id="compare-title">None vs live vs delayed</h2></div><span id="compare-note" class="muted"></span></div>
+        <div id="compare-table" class="compare-table"></div>
+        <div class="chart-head"><h3>Average occupancy by time of day</h3><div class="legend" id="compare-legend"></div></div>
+        <div class="chart-wrap profile-wrap"><canvas id="compare-chart" aria-label="Average occupancy by slot for each information mode"></canvas><div class="tooltip" id="compare-tooltip" hidden></div></div>
+      </section>
+
+      <details class="panel profile-panel">
+        <summary>Population profiles and scheduling rules</summary>
+        <p>Morning: 06:30-12:00 / Afternoon: 12:00-17:00 / Night: 17:00-22:00 / Whenever: any available time.</p>
+        <p>Flexibility extends the preferred start period by 0, 1, or 3 hours, or allows any available start. The entire one-hour workout must fit inside an availability window. Under the utility rule everyone pays a crowding penalty that grows as the forecast nears capacity; crowding taste only shifts preferences below capacity.</p>
+        <div id="population-summary" class="population-summary"></div>
+        <p>Changing a setting other than the population seed or mix keeps the same agents. A new population seed creates a different assignment.</p>
+        <button type="button" id="export-profiles" class="button secondary">Download agent profiles</button>
+      </details>
 
       <section class="main-grid">
         <article class="panel agents-panel">
@@ -84,6 +84,7 @@
           </div>
           <p class="muted">Select an agent to inspect their schedule and preferences.</p>
           <div id="agent-grid" class="agent-grid" aria-label="Agent decision field"></div>
+          <canvas id="agent-canvas" class="agent-canvas" hidden aria-label="Agent decision field, one cell per agent; click a cell to inspect that agent"></canvas>
           <div id="agent-detail" class="agent-detail" aria-live="polite"></div>
         </article>
 
@@ -94,13 +95,14 @@
       </section>
 
       <section class="panel chart-panel">
-        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">orange line = capacity Â· older data is compressed, not dropped</span></div>
+        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">dashed line = capacity &middot; older data is compressed, not dropped</span></div>
         <div class="chart-wrap"><canvas id="occupancy-chart" height="220"></canvas></div>
       </section>
 
-      <footer>Browser visualization of the decision rules in <code>netlogo/GymElFarol.nlogox</code>. The NetLogo model remains the experiment source of truth.</footer>
+      <footer>Browser mirror of <code>netlogo/GymElFarol.nlogox</code>. The NetLogo model remains the experiment source of truth; <code>tests/check_netlogo_parity.js</code> checks that both give the same results.</footer>
     </main>
     <script src="simulation.js"></script>
+    <script src="controls.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

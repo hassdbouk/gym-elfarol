@@ -1,6 +1,6 @@
 # Individual gym schedules and preferences
 
-Implemented from the group input confirmed on November 9, 2026. The default population is 100 agents. Each agent has one availability group, time preference, flexibility level, and crowding preference. These are modeling assumptions, not surveyed student schedules.
+Implemented from the group input confirmed on November 9, 2026. The default population is 340 agents (calibrated; see below). Each agent has one availability group, time preference, flexibility level, and crowding preference. These are modeling assumptions, not surveyed student schedules.
 
 ## Confirmed profiles
 
@@ -15,21 +15,45 @@ Time preferences are Morning (06:30-12:00), Night (17:00-22:00), Afternoon (12:0
 
 Workouts last one hour, or two half-hour slots. The complete workout must fit inside one availability window and end by closing. An 08:30 start cannot cross group 1's 09:00 boundary. A workout cannot bridge the gap between two windows. The last possible gym-wide start is 21:00.
 
-Crowding types are No difference, Likes it busy, and Likes it empty. They rank feasible predicted loads differently, but none deliberately chooses a forecast above capacity under the default `must-go? = false` setting. Simultaneous decisions can still produce actual over-capacity occupancy. Physical capacity is common to all agents.
+Crowding types are No difference, Likes it busy, and Likes it empty. Under the utility rule they shift taste only below capacity; every type pays the same crowding penalty as the forecast nears and passes capacity. Simultaneous decisions can still produce actual over-capacity occupancy. Physical capacity is common to all agents.
 
 The canonical profile definitions are `web/profile-rules.csv`. Both implementations read this file. Browser seed history is served directly from `netlogo/seed_history.csv`; it is not a second hard-coded copy.
 
 ## Decision rule
 
-At each slot, agents whose workout has ended leave first. Agents who have not visited consider their remaining allowed start slots:
+`decision-rule = "utility"` is the model. `"legacy"` keeps the earlier threshold rule unchanged, for before/after comparison (experiment `legacy-baseline`). Both keep the El Farol core: per-slot memory, each agent's bag of random linear predictors chosen by past error, and the none/live/delayed information switch.
 
-1. The current slot's prediction comes from that agent's best linear predictor, with the existing 50/50 live or delayed information blend. A missing early-day information signal falls back to the inductive prediction.
-2. Future candidate slots use their historical mean over the chosen memory length. Agents never see future actual occupancy. These estimates are refreshed when the next slot is reached.
-3. Predictions are bounded to zero through population size. Starts predicted to exceed capacity are excluded.
-4. Candidate score is `crowding direction * predicted occupancy / capacity - time cost`. Direction is 0 for indifferent, +1 for busy-seeking, and -1 for quiet-seeking. Time cost is the distance outside the preferred start period divided by the flexibility allowance. Unlimited flexibility uses the 930-minute operating span; Whenever has zero time cost. This equal weighting is an explicit implementation assumption.
-5. The agent attends if the current slot is its highest-scoring remaining candidate; otherwise it waits. Fixed, independently generated per-agent slot priorities break ties and prevent shared labels from forcing identical choices.
+**Forecasts.** At the start of each day, every agent forecasts each of its allowed start slots with its best predictor on that slot's own history (yesterday and earlier only). The predictor is `C * c + sum(w_k * x_k)`. The constant is scaled by capacity rather than population, so forecast noise does not grow with N; with the original population scaling, 42% of current-slot forecasts at N = 400 exceeded capacity from noise alone. With `recency-decay` below 1, the error on the day d back is weighted by `decay^(d-1)` when choosing the predictor. All estimates are clipped to [0, N].
 
-Zero-flexibility agents never start outside their preferred period. Unlimited flexibility allows movement within availability while preserving a soft preference for the named period. An agent with no feasible start skips; its availability is not silently changed. `must-go?`, if deliberately enabled in NetLogo, forces attendance only at that agent's final allowed start, never outside availability.
+**Information.** Live or delayed information changes only the slot being decided: its forecast becomes `0.5 * forecast + 0.5 * observed count` (the count 1 or `delay` slots ago). Later slots keep the day-start forecast in every mode. In words: information tells agents how busy the gym is now; it does not change their beliefs about later today, and agents never see future actual counts.
+
+**Utility.** With load `x = forecast / C`:
+
+```text
+P(x)      = ( max(0, x - theta) / (1 - theta) )^2
+U_i(s)    = V - wP * P(x) + wC * d_i * min(x, 1) - wT * T_i(s) + wR * R_i(s)
+U_i(skip) = 0
+```
+
+`d_i` is 0, +1 or -1 for indifferent, busy-liking and quiet-liking agents. `T_i(s)` is the distance outside the preferred start period divided by the flexibility allowance (930 minutes for "any time"; 0 for Whenever). `R_i(s)` is the learned value of the slot (0 unless `outcome-learning?` is on).
+
+| Weight (NetLogo global) | Default | Reason | Sensitivity values |
+| --- | --- | --- | --- |
+| V `workout-value` | 1 | unit of value; the other weights are relative to it | fixed |
+| wP `crowd-penalty` | 1 | at a forecast of C the penalty cancels the workout, so a typical agent is indifferent between a full gym and staying home, as in El Farol | 0.5, 2 |
+| theta `comfort-threshold` | 0.8 | the real mean is about 0.67 C, so typical slots carry no penalty | 0.6, 0.9 |
+| wT `time-weight` | 0.5 | starting at the edge of one's flexibility costs half a workout | 0.25, 1 |
+| wC `taste-weight` | 0.25 | smaller than the penalty, so busy-likers peak at about 0.805 C, below capacity | 0, 0.5 |
+| tau `choice-temperature` | 0.1 | a utility gap of 0.1 changes the odds by a factor of e | 0 (argmax), 0.05, 0.25 |
+| alpha, wR `learning-rate`, `learning-weight` | 0.2, 0.5 | only with `outcome-learning?` on (off by default) | learning on |
+
+The old filter "never start above capacity" is the limit theta -> 1, wP -> infinity, tau -> 0.
+
+**Choice.** At each slot a waiting agent chooses among {start now, a later allowed start, skip today} with probability `exp(U/tau) / sum exp(U/tau)`. It starts only if it draws "now"; otherwise it waits and decides again at its next allowed start, and at its last allowed start "not now" means skip. If utilities stay fixed during the day, this gives exactly the same distribution as one logit choice over the whole day (tested). The random draw for (agent, day, slot) is a counter-based Park-Miller hash of the strategy seed, so none, live and delayed runs use the same draws and are paired comparisons. With tau = 0 the choice is the argmax, and the fixed per-agent tie priorities break exact ties. `must-go?` makes an agent go at its last allowed start, never outside availability. There is no queue or entry cap: over capacity only makes the visit bad.
+
+**Outcome learning (off by default).** After each visit, `R(s) <- R(s) + alpha * (r - R(s))` for the visited start slot, with r = +1 for a good visit and -1 for a bad one.
+
+Zero-flexibility agents never start outside their preferred period. An agent with no feasible start skips every day (availability "Before and after class" + Afternoon + No change has none); these are reported separately as `structural-skip-rate`.
 
 ## Occupancy and visit accounting
 
@@ -39,7 +63,7 @@ This fixes the prior NetLogo behavior in which `attend?` remained true until the
 
 ## Balanced and reproducible populations
 
-There are 4 x 4 x 4 x 3 = 192 possible profile combinations. With 100 agents, the default allocation is:
+There are 4 x 4 x 4 x 3 = 192 possible profile combinations. With the balanced mix, for example with 100 agents, the allocation is:
 
 - 25 agents per availability group;
 - 25 per time preference, with six or seven of each preference inside each availability group;
@@ -48,9 +72,26 @@ There are 4 x 4 x 4 x 3 = 192 possible profile combinations. With 100 agents, th
 
 Assignments are randomized subject to these marginal counts. This does not fully balance all 192 joint combinations. The population seed controls profile assignments and tie priorities, independently of the strategy seed and memory length. Attributes stay fixed throughout a run. Both implementations use the same specified Park-Miller generator for profiles and linear-strategy weights so matching configurations can be checked directly.
 
-BehaviorSpace varies population seeds 1-5 for the pilot and 1-30 for the full grid, with one run per explicit seed per condition. Strategy seed is `100000 + population-seed`. Thus the same population is reused across information and memory conditions: 45 pilot runs and 270 full-grid runs. Each run lasts 40 days; the first 10 are discarded. Population and strategy seeds are recorded in the output. Use a new population seed to explore a new assignment; do not change it when comparing conditions for the same replicate.
+Strategy seed is `100000 + population-seed`, so the same population is reused across information and memory conditions. Population and strategy seeds are recorded in the output. Use a new population seed to explore a new assignment; do not change it when comparing conditions for the same replicate.
 
 In the browser, select an agent for its complete profile and allowed starts. Download agent profiles to retain the exact assignments, rules, and tie priorities. In the NetLogo Command Center, `export-agent-profiles "profiles.csv"` exports the current assignment.
+
+## Experiments
+
+`analysis/build_experiments.py` writes `netlogo/experiments.xml` and the copy embedded in the model from one definition; `tests/check_model_config.py` checks that they match. Every experiment pins every model global, runs 50 days (1550 ticks) and discards the first 20, so no seeded history is used in strategy scoring after burn-in, even with memory 10. Calibrated N = 340, C = 37.
+
+| Experiment | Design | Runs |
+| --- | --- | --- |
+| `info-memory-grid` | info none/live/delayed x memory 1/5/10 x population seeds 1-30 | 270 |
+| `info-memory-pilot` | same, seeds 1-5 | 45 |
+| `smoke-one-day` | none, memory 5, one day | 1 |
+| `legacy-baseline` | grid with `decision-rule = "legacy"`, seeds 1-5 | 45 |
+| `calibration-n` | none, memory 1/5/10, N = 330-350 step 5, seeds 1-10 (NetLogo check of the N fit) | 150 |
+| `sens-*` (10 experiments) | one setting changed at a time (table above, plus N and C +/-10%, `recency-decay` 0.7, demand-weighted mix) x info x memory 5 x seeds 1-10 | 540 |
+
+Reporters: peak occupancy, % slots over capacity, occupancy variance, good-visit rate, skip rate, lag-1 autocorrelation, and the shifting measures `start-change-rate` (agents visiting on consecutive measured days who change start slot), `mean-start-shift` (slots), `later-than-planned-share` (visits after the agent's first-choice slot that day), `fixed-start-share` (agents with the same start on every measured day), `structural-skip-rate`, `occupancy-profile` (31 slot means) and `profile-rmse` (against the real curve).
+
+**Runtime.** The browser engine takes about 1.6 s per run at N = 340 (one thread). The earlier NetLogo pilot ran about 70 times slower than the browser engine; at that ratio, a run takes about 2 minutes per NetLogo thread. That puts the main grid at about 45 minutes on 12 threads and all 1051 runs at about 3 hours. Replace these estimates with the times recorded in each table's `.meta.json`.
 
 ## Running and verifying
 
@@ -60,16 +101,18 @@ From the repository root:
 python web/server.py
 node --test tests/simulation.test.js
 python tests/check_model_config.py
+python analysis/calibrate.py --self-test
+node tests/diagnose_shifting.js
 python analysis/run_pilot.py --smoke
 python analysis/run_pilot.py --experiment info-memory-pilot --threads 4
 node tests/check_netlogo_parity.js data/processed/preferences_pilot.csv
 ```
 
-The browser runs at http://127.0.0.1:8000. Use Reset to replay the same seeds. Changing information, memory, population size, capacity, days, or seeds resets the run. The browser stops after exactly the requested number of days. Speed changes do not reset the experiment.
+`diagnose_shifting.js` prints the before/after table (legacy vs utility rule) of how often agents change start slot. Recalibration, if the rule or default weights change: `python analysis/calibrate.py`, `node analysis/calibrate_n.js`, `python analysis/calibrate.py` (to record N in the seed file), then `python analysis/build_experiments.py`.
 
-Open `netlogo/GymElFarol.nlogox` with NetLogo 7.0.4. The older `.nlogo` file is retained as a legacy version and does not contain these changes. The runner accepts `--netlogo PATH` or `NETLOGO_HOME` if NetLogo is not in its usual installation directory. It stages the include file and shared CSV rules alongside the model.
+The browser runs at http://127.0.0.1:8000. Every model control is a NetLogo global with the same name and default (checked by a unit test); "Days to simulate" corresponds to the BehaviorSpace time limit. Changing a setting restarts the run with the same seeds. "Run to end" runs the remaining days without animation and fills the results panel (post-burn-in measures and occupancy by time of day against the real curve). "Compare info modes" runs none, live and delayed with the current settings and seeds and shows them side by side. "Reset to calibrated defaults" restores the defaults. Above 300 agents the agent field is drawn as a compact canvas; with 1,000 agents an animated slot takes about 5 ms and "Run to end" about 4 s.
 
-New results use `preferences_smoke.csv`, `preferences_pilot.csv`, or `preferences_info-memory-grid.csv`. Run metadata is stored beside each table as `.meta.json`, including hashes of the model, include, rule CSV, and seed CSV. The original pilot CSV and summary are retained as historical artifacts. `analysis/analyze_pilot.py` remains the older slot-model decision analysis; its fixed narrative and default output names should not be used as the new preference experiment report.
+Open `netlogo/GymElFarol.nlogox` with NetLogo 7.0.4. The older `.nlogo` file is retained as a legacy version and does not contain these changes. The runner accepts `--netlogo PATH` or `NETLOGO_HOME` if NetLogo is not in its usual installation directory. It stages the include file and shared CSV files (rules, profile mix, seed history) alongside the model. Results are written as `preferences_<experiment>.csv` (`preferences_pilot.csv` for the pilot), with run metadata in `.meta.json`. The original pilot CSV and `analysis/analyze_pilot.py` belong to the older slot model and do not describe this one.
 
 ## Calibration of scale, seed history and population size
 
@@ -83,4 +126,7 @@ New results use `preferences_smoke.csv`, `preferences_pilot.csv`, or `preference
 
 ## Research limitations to resolve before conclusions
 
-Do not tune capacity, N, or weights to manufacture a desired information effect. Balanced profile proportions and the utility weights are assumptions. Later sensitivity analyses can vary them. The existing Word report and progress summary still contain older model descriptions and should be updated by the group to describe the final implementation and its limitations.
+Do not tune capacity, N, or weights to manufacture a desired information effect. Balanced profile proportions and the utility weights are assumptions.
+
+- **Restless agents.** With learning off, below theta most slots have equal utility for most agents, so agents change start slot on about 87% of days. Temperature barely changes this (at N = 400: 83-86% for tau 0.02-0.1; 66% at tau = 0). Outcome learning gives some habit (about 58%) and cuts crowding. Decide whether to switch learning on, or add a habit term, before the final runs; N must then be recalibrated.
+- **NetLogo not yet run.** The NetLogo mirror of the new rule has not been run here. Run the smoke and pilot experiments and `check_netlogo_parity.js` before using BehaviorSpace results. Later sensitivity analyses can vary them. The existing Word report and progress summary still contain older model descriptions and should be updated by the group to describe the final implementation and its limitations.

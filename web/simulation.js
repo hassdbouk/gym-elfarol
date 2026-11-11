@@ -238,11 +238,16 @@
     temperature: 0.1, outcomeLearning: false, learningRate: 0.2, learningWeight: 0.5, recencyDecay: 1,
     scaleSeedWithN: true, capacityFromRatio: false, capacityRatio: 10.88, profileMix: "balanced",
   });
+  // Every model option with its calibrated default (the browser's "Reset to calibrated
+  // defaults"). agentCount comes from analysis/calibrate_n.js (data/processed/calibration_n.json).
+  const DEFAULT_OPTIONS = Object.freeze({
+    agentCount: 340, capacity: 37, memory: 5, strategies: 10, mode: "none", delay: 2, maxDays: 50, burnIn: 20, duration: 2,
+    populationSeed: 42, simulationSeed: 1234, mustGo: false, ...DEFAULTS,
+  });
   class Simulation {
     constructor(rules, seedHistory, options = {}) {
       this.rules = rules;
-      // agentCount: calibrated by analysis/calibrate_n.js (data/processed/calibration_n.json).
-      this.options = { agentCount: 340, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 50, burnIn: 20, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...DEFAULTS, ...options };
+      this.options = { ...DEFAULT_OPTIONS, ...options };
       const o = this.options;
       // Optional: capacity as a percentage of the population, so changing N keeps the ratio.
       if (o.capacityFromRatio) o.capacity = Math.max(1, Math.round(o.capacityRatio * o.agentCount / 100));
@@ -347,5 +352,5 @@
       return { populationSeed: this.options.populationSeed, simulationSeed: this.options.simulationSeed, options: this.options, rules: this.rules, agents: this.agents.map(({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts }) => ({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts })) };
     }
   }
-  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, parseProfileMix, mixCellCounts, bestStart, chooseStart, choiceUtility, crowdingPenalty, utilityDecision, choiceDraw, mulmod, DEFAULTS, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
+  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, parseProfileMix, mixCellCounts, bestStart, chooseStart, choiceUtility, crowdingPenalty, utilityDecision, choiceDraw, mulmod, DEFAULTS, DEFAULT_OPTIONS, predict, predictorScale, currentPrediction, autocorrelation, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
 });

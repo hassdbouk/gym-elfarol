@@ -1493,7 +1493,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
   <previewCommands>setup repeat 31 [ go ]</previewCommands>
   <citation year1="2007" cite="Rand, W., Wilensky, U."></citation>
   <experiments>
-    <experiment name="info-memory-pilot" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
+    <experiment name="info-memory-grid" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
       <setup>set simulation-seed 100000 + population-seed setup</setup>
       <go>go</go>
       <metrics>
@@ -1503,45 +1503,46 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric><metric>start-change-rate</metric><metric>mean-start-shift</metric><metric>later-than-planned-share</metric><metric>fixed-start-share</metric><metric>structural-skip-rate</metric><metric>occupancy-profile</metric><metric>profile-rmse</metric></metrics>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
       <constants>
-        <enumeratedValueSet variable="info-mode">
-          <value value="&quot;none&quot;" />
-          <value value="&quot;live&quot;" />
-          <value value="&quot;delayed&quot;" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="memory-size">
-          <value value="1" />
-          <value value="5" />
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="number-strategies">
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="n-agents">
-          <value value="100" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="capacity">
-          <value value="37" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="delay">
-          <value value="2" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="burn-in-days">
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="must-go?">
-          <value value="false" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="seed-from-data?">
-          <value value="true" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="visualize?">
-          <value value="false" />
-        </enumeratedValueSet>
-      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet><enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet></constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="1" /><value value="5" /><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /><value value="11" /><value value="12" /><value value="13" /><value value="14" /><value value="15" /><value value="16" /><value value="17" /><value value="18" /><value value="19" /><value value="20" /><value value="21" /><value value="22" /><value value="23" /><value value="24" /><value value="25" /><value value="26" /><value value="27" /><value value="28" /><value value="29" /><value value="30" /></enumeratedValueSet>
+      </constants>
     </experiment>
-    <experiment name="info-memory-grid" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
+    <experiment name="info-memory-pilot" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
       <setup>set simulation-seed 100000 + population-seed setup</setup>
       <go>go</go>
       <metrics>
@@ -1551,43 +1552,44 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric><metric>start-change-rate</metric><metric>mean-start-shift</metric><metric>later-than-planned-share</metric><metric>fixed-start-share</metric><metric>structural-skip-rate</metric><metric>occupancy-profile</metric><metric>profile-rmse</metric></metrics>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
       <constants>
-        <enumeratedValueSet variable="info-mode">
-          <value value="&quot;none&quot;" />
-          <value value="&quot;live&quot;" />
-          <value value="&quot;delayed&quot;" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="memory-size">
-          <value value="1" />
-          <value value="5" />
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="number-strategies">
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="n-agents">
-          <value value="100" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="capacity">
-          <value value="37" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="delay">
-          <value value="2" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="burn-in-days">
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="must-go?">
-          <value value="false" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="seed-from-data?">
-          <value value="true" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="visualize?">
-          <value value="false" />
-        </enumeratedValueSet>
-      <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /><value value="11" /><value value="12" /><value value="13" /><value value="14" /><value value="15" /><value value="16" /><value value="17" /><value value="18" /><value value="19" /><value value="20" /><value value="21" /><value value="22" /><value value="23" /><value value="24" /><value value="25" /><value value="26" /><value value="27" /><value value="28" /><value value="29" /><value value="30" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet><enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet></constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="1" /><value value="5" /><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet>
+      </constants>
     </experiment>
     <experiment name="smoke-one-day" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="31">
       <setup>set simulation-seed 100000 + population-seed setup</setup>
@@ -1599,39 +1601,632 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric><metric>start-change-rate</metric><metric>mean-start-shift</metric><metric>later-than-planned-share</metric><metric>fixed-start-share</metric><metric>structural-skip-rate</metric><metric>occupancy-profile</metric><metric>profile-rmse</metric></metrics>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
       <constants>
-        <enumeratedValueSet variable="info-mode">
-          <value value="&quot;none&quot;" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="memory-size">
-          <value value="5" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="number-strategies">
-          <value value="10" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="n-agents">
-          <value value="100" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="capacity">
-          <value value="37" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="delay">
-          <value value="2" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="burn-in-days">
-          <value value="0" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="must-go?">
-          <value value="false" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="seed-from-data?">
-          <value value="true" />
-        </enumeratedValueSet>
-        <enumeratedValueSet variable="visualize?">
-          <value value="false" />
-        </enumeratedValueSet>
-      <enumeratedValueSet variable="population-seed"><value value="1" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet><enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet></constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="0" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="legacy-baseline" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="1" /><value value="5" /><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;legacy&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="calibration-n" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="1" /><value value="5" /><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="330" /><value value="335" /><value value="340" /><value value="345" /><value value="350" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-crowd-penalty" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="0.5" /><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-comfort-threshold" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.6" /><value value="0.9" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-time-weight" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.25" /><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-taste-weight" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0" /><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-choice-temperature" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0" /><value value="0.05" /><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-n-agents" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="306" /><value value="374" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-capacity" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="33" /><value value="41" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-outcome-learning" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-recency-decay" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="0.7" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;balanced&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="sens-profile-mix" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1550">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>start-change-rate</metric>
+        <metric>mean-start-shift</metric>
+        <metric>later-than-planned-share</metric>
+        <metric>fixed-start-share</metric>
+        <metric>structural-skip-rate</metric>
+        <metric>occupancy-profile</metric>
+        <metric>profile-rmse</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode"><value value="&quot;none&quot;" /><value value="&quot;live&quot;" /><value value="&quot;delayed&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size"><value value="5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies"><value value="10" /></enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents"><value value="340" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity"><value value="37" /></enumeratedValueSet>
+        <enumeratedValueSet variable="delay"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days"><value value="20" /></enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="decision-rule"><value value="&quot;utility&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="workout-value"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="crowd-penalty"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="comfort-threshold"><value value="0.8" /></enumeratedValueSet>
+        <enumeratedValueSet variable="time-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="taste-weight"><value value="0.25" /></enumeratedValueSet>
+        <enumeratedValueSet variable="choice-temperature"><value value="0.1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="outcome-learning?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-rate"><value value="0.2" /></enumeratedValueSet>
+        <enumeratedValueSet variable="learning-weight"><value value="0.5" /></enumeratedValueSet>
+        <enumeratedValueSet variable="recency-decay"><value value="1" /></enumeratedValueSet>
+        <enumeratedValueSet variable="scale-seed-with-n?"><value value="true" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-from-ratio?"><value value="false" /></enumeratedValueSet>
+        <enumeratedValueSet variable="capacity-ratio"><value value="10.88" /></enumeratedValueSet>
+        <enumeratedValueSet variable="profile-mix"><value value="&quot;demand-weighted&quot;" /></enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /><value value="6" /><value value="7" /><value value="8" /><value value="9" /><value value="10" /></enumeratedValueSet>
+      </constants>
     </experiment>
   </experiments>
 
