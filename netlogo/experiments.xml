@@ -26,7 +26,7 @@
           <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100" />
+          <value value="400" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
           <value value="37" />
@@ -74,7 +74,7 @@
           <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100" />
+          <value value="400" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
           <value value="37" />
@@ -118,7 +118,7 @@
           <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100" />
+          <value value="400" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
           <value value="37" />

@@ -263,7 +263,7 @@ to load-seed-means
   let mean-col position "mean_occupancy_scaled" header
   if not is-number? mean-col [ stop ]
   let weekday-cols []
-  foreach [ "monday_scaled" "tuesday_scaled" "wednesday_scaled" "thursday_scaled" "friday_scaled" ] [ name ->
+  foreach [ "monday_scaled" "tuesday_scaled" "wednesday_scaled" "thursday_scaled" ] [ name ->
     let col position name header
     if is-number? col [
       set weekday-cols lput col weekday-cols
@@ -471,7 +471,7 @@ end
 ]]></code>
   <widgets>
     <view x="300" wrappingAllowedX="true" y="10" frameRate="30.0" minPycor="-17" height="424" showTickCounter="true" patchSize="12.0" fontSize="14" wrappingAllowedY="true" width="424" tickCounterLabel="ticks" maxPycor="17" updateMode="1" maxPxcor="17" minPxcor="-17"></view>
-    <slider x="10" step="1" y="10" max="200" width="270" display="n-agents" height="50" min="10" direction="Horizontal" default="100.0" variable="n-agents"></slider>
+    <slider x="10" step="1" y="10" max="500" width="270" display="n-agents" height="50" min="10" direction="Horizontal" default="400.0" variable="n-agents"></slider>
     <slider x="10" step="1" y="60" max="100" width="270" display="capacity" height="50" min="1" direction="Horizontal" default="37.0" variable="capacity"></slider>
     <slider x="10" step="1" y="110" max="10" width="270" display="memory-size" height="50" min="1" direction="Horizontal" default="5.0" variable="memory-size"></slider>
     <slider x="10" step="1" y="160" max="20" width="270" display="number-strategies" height="50" min="1" direction="Horizontal" default="10.0" variable="number-strategies"></slider>
@@ -540,7 +540,7 @@ plotxy plot-x-max capacity</update>
   <info><![CDATA[
 # Individual gym schedules and preferences
 
-Implemented from the group input confirmed on November 9, 2026. The default population is 100 agents. Each agent has one availability group, time preference, flexibility level, and crowding preference. These are modeling assumptions, not surveyed student schedules.
+Implemented from the group input confirmed on November 9, 2026. The default population is 400 agents. Each agent has one availability group, time preference, flexibility level, and crowding preference. These are modeling assumptions, not surveyed student schedules.
 
 ## Confirmed profiles
 
@@ -1365,7 +1365,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
           <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100" />
+          <value value="400" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
           <value value="37" />
@@ -1413,7 +1413,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
           <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100" />
+          <value value="400" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
           <value value="37" />
@@ -1457,7 +1457,7 @@ The original El Farol model is Copyright 2007 Uri Wilensky, CC BY-NC-SA 3.0. Thi
           <value value="10" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="n-agents">
-          <value value="100" />
+          <value value="400" />
         </enumeratedValueSet>
         <enumeratedValueSet variable="capacity">
           <value value="37" />

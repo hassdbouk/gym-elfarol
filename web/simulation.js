@@ -45,7 +45,7 @@
     if (rows.length !== SLOTS) throw Error("Seed history must contain 31 slots");
     return rows.map((row, index) => {
       if (Number(row.slot_index) !== index) throw Error("Seed history slots must be ordered");
-      const series = ["monday", "tuesday", "wednesday", "thursday", "friday"].map(day => row[`${day}_scaled`]).filter(x => x !== "" && x != null).map(Number);
+      const series = ["monday", "tuesday", "wednesday", "thursday"].map(day => row[`${day}_scaled`]).filter(x => x !== "" && x != null).map(Number);
       if (!series.length) series.push(Number(row.mean_occupancy_scaled));
       if (!series.every(Number.isFinite)) throw Error("Invalid occupancy seed");
       return series;
@@ -113,7 +113,7 @@
   class Simulation {
     constructor(rules, seedHistory, options = {}) {
       this.rules = rules;
-      this.options = { agentCount: 100, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...options };
+      this.options = { agentCount: 400, capacity: 37, memory: 5, strategies: 10, mode: "live", delay: 2, maxDays: 40, burnIn: 10, duration: 2, populationSeed: 42, simulationSeed: 1234, mustGo: false, ...options };
       const o = this.options;
       for (const k of ["agentCount", "capacity", "memory", "strategies", "delay", "maxDays", "duration"]) if (!Number.isInteger(o[k]) || o[k] < 1) throw Error(`Invalid ${k}`);
       if (o.duration > SLOTS || !["none", "live", "delayed"].includes(o.mode)) throw Error("Invalid simulation configuration");
