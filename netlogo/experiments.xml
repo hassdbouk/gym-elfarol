@@ -10,7 +10,10 @@
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric></metrics>
+      <metric>simulation-seed</metric>
+        <metric>mean-occupancy</metric>
+        <metric>slot-mean-profile</metric>
+        <metric>day-to-day-change</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
           <value value="&quot;none&quot;" />
@@ -58,7 +61,10 @@
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric></metrics>
+      <metric>simulation-seed</metric>
+        <metric>mean-occupancy</metric>
+        <metric>slot-mean-profile</metric>
+        <metric>day-to-day-change</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
           <value value="&quot;none&quot;" />
@@ -106,7 +112,10 @@
         <metric>good-visit-rate</metric>
         <metric>skip-rate</metric>
         <metric>lag1-autocorr</metric>
-      <metric>simulation-seed</metric></metrics>
+      <metric>simulation-seed</metric>
+        <metric>mean-occupancy</metric>
+        <metric>slot-mean-profile</metric>
+        <metric>day-to-day-change</metric></metrics>
       <constants>
         <enumeratedValueSet variable="info-mode">
           <value value="&quot;none&quot;" />
@@ -139,6 +148,55 @@
           <value value="false" />
         </enumeratedValueSet>
       <enumeratedValueSet variable="population-seed"><value value="1" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
+    </experiment>
+    <experiment name="calibration-n" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="false" timeLimit="1240">
+      <setup>set simulation-seed 100000 + population-seed setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>peak-occupancy</metric>
+        <metric>pct-slots-over-capacity</metric>
+        <metric>occupancy-variance</metric>
+        <metric>good-visit-rate</metric>
+        <metric>skip-rate</metric>
+        <metric>lag1-autocorr</metric>
+        <metric>simulation-seed</metric>
+        <metric>mean-occupancy</metric>
+        <metric>slot-mean-profile</metric>
+        <metric>day-to-day-change</metric></metrics>
+      <constants>
+        <enumeratedValueSet variable="info-mode">
+          <value value="&quot;none&quot;" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="memory-size">
+          <value value="5" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="number-strategies">
+          <value value="10" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="n-agents">
+          <value value="385" />
+          <value value="400" />
+          <value value="425" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="capacity">
+          <value value="37" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="delay">
+          <value value="2" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="burn-in-days">
+          <value value="10" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="must-go?">
+          <value value="false" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="seed-from-data?">
+          <value value="true" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="visualize?">
+          <value value="false" />
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="population-seed"><value value="1" /><value value="2" /><value value="3" /><value value="4" /><value value="5" /></enumeratedValueSet><enumeratedValueSet variable="workout-slots"><value value="2" /></enumeratedValueSet></constants>
     </experiment>
   </experiments>
 

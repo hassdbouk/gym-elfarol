@@ -16,13 +16,15 @@ for experiment in external:
     runs = int(experiment.get("repetitions"))
     for factor in factors:
         runs *= len(factor)
-    expected = {"info-memory-pilot": 45, "info-memory-grid": 270, "smoke-one-day": 1}[experiment.get("name")]
+    expected = {"info-memory-pilot": 45, "info-memory-grid": 270, "smoke-one-day": 1, "calibration-n": 15}[experiment.get("name")]
     assert runs == expected
     assert int(experiment.get("timeLimit")) == (31 if expected == 1 else 1240)
     assert experiment.find("constants/enumeratedValueSet[@variable='workout-slots']/value").get("value") == "2"
     assert "simulation-seed" in experiment.find("setup").text
+    metrics = {m.text for m in experiment.findall("metrics/metric")}
+    assert {"mean-occupancy", "slot-mean-profile", "day-to-day-change"} <= metrics, experiment.get("name")
 rules = list(csv.DictReader((root / "web/profile-rules.csv").open(encoding="utf-8", newline="")))
 assert len(rules) == 15
 assert len(list(csv.DictReader((root / "netlogo/seed_history.csv").open(encoding="utf-8", newline="")))) == 31
 assert (root / "netlogo/preferences.nls").is_file()
-print("Shared rules and experiment configuration checks passed (45 pilot / 270 full runs)")
+print("Shared rules and experiment configuration checks passed (45 pilot / 270 full / 15 calibration-n runs)")

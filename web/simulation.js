@@ -163,5 +163,18 @@
       return { populationSeed: this.options.populationSeed, simulationSeed: this.options.simulationSeed, options: this.options, rules: this.rules, agents: this.agents.map(({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts }) => ({ id, availability, preference, flexibility, crowding, tiePriorities, allowedStarts })) };
     }
   }
-  return { Simulation, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, chooseStart, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
+  // Post-burn-in reporters matching NetLogo mean-occupancy, slot-mean-profile, day-to-day-change.
+  function reporters(occupancy) {
+    const days = [];
+    for (const { day, slot, attendance } of occupancy) (days[day] ||= [])[slot] = attendance;
+    const full = days.filter(d => d && d.length === SLOTS);
+    const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+    const changes = full.slice(1).flatMap((d, i) => d.map((x, s) => Math.abs(x - full[i][s])));
+    return {
+      meanOccupancy: mean(occupancy.map(p => p.attendance)),
+      slotMeanProfile: Array.from({ length: SLOTS }, (_, s) => mean(full.map(d => d[s]))),
+      dayToDayChange: mean(changes),
+    };
+  }
+  return { Simulation, reporters, parseRules, parseSeedHistory, profiles, allowedStarts, preferenceDistance, utility, chooseStart, rng, labels, time, OPEN, CLOSE, SLOT, SLOTS };
 });

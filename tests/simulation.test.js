@@ -86,6 +86,17 @@ test('run stops at the requested day count and preserves population profiles', (
   assert.equal(s.metrics.visits + s.metrics.skips, 1200);
   assert.equal(s.history.reduce((a, b) => a + b, 0), 2 * s.metrics.visits);
 });
+test('validation reporters summarize post-burn-in slots', () => {
+  const s = create({ maxDays: 3, burnIn: 1 });
+  while (!s.done) s.step();
+  const r = G.reporters(s.metrics.occupancy), kept = s.history.slice(31);
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  assert.equal(r.slotMeanProfile.length, 31);
+  assert(Math.abs(mean(r.slotMeanProfile) - r.meanOccupancy) < 1e-9);
+  assert(Math.abs(r.meanOccupancy - mean(kept)) < 1e-9);
+  assert(Math.abs(r.dayToDayChange - mean(kept.slice(31).map((x, i) => Math.abs(x - kept[i])))) < 1e-9);
+  r.slotMeanProfile.forEach((v, i) => assert.equal(v, (kept[i] + kept[i + 31]) / 2));
+});
 test('same seeds reproduce trajectories and burn-in excludes complete days', () => {
   const a = create({ maxDays: 3, burnIn: 1 }), b = create({ maxDays: 3, burnIn: 1 });
   while (!a.done) { a.step(); b.step(); }

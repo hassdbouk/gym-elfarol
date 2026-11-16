@@ -31,6 +31,11 @@ for (const row of rows) {
   while (!s.done) s.step();
   const m = s.metrics, counts = m.occupancy.map(p => p.attendance), average = counts.length ? mean(counts) : 0;
   const actual = { 'peak-occupancy': m.peak, 'pct-slots-over-capacity': m.slots ? 100 * m.over / m.slots : 0, 'occupancy-variance': counts.length ? mean(counts.map(x => (x - average) ** 2)) : 0, 'good-visit-rate': m.visits ? m.good / m.visits : 0, 'skip-rate': m.agentDays ? m.skips / m.agentDays : 0, 'lag1-autocorr': autocorrelation(m.occupancy) };
+  const r = G.reporters(m.occupancy);
+  Object.assign(actual, { 'mean-occupancy': r.meanOccupancy, 'day-to-day-change': r.dayToDayChange });
+  const profile = row['slot-mean-profile'].replace(/[\[\]]/g, '').trim().split(/\s+/).map(Number);
+  assert.equal(profile.length, 31, 'slot-mean-profile must have 31 slots');
+  profile.forEach((v, s) => assert(Math.abs(v - r.slotMeanProfile[s]) < 1e-8, `Run ${row['[run number]']} slot-mean-profile[${s}]: browser=${r.slotMeanProfile[s]}, NetLogo=${v}`));
   for (const [metric, value] of Object.entries(actual)) assert(Math.abs(value - Number(row[metric])) < 1e-8, `Run ${row['[run number]']} (${o.mode}, memory ${o.memory}, seed ${o.populationSeed}) ${metric}: browser=${value}, NetLogo=${row[metric]}`);
 }
-console.log(`Browser and NetLogo agree on all six reporters for ${rows.length} completed runs`);
+console.log(`Browser and NetLogo agree on all nine reporters for ${rows.length} completed runs`);
