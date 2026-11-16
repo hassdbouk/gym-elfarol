@@ -1,3 +1,5 @@
 # Cleaning, calibration, and later BehaviorSpace analysis.
 pandas
 numpy
+matplotlib
+scipy
