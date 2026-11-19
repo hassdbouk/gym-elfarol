@@ -6,8 +6,8 @@ coefficient of variation, lag-1 autocorrelation), and
 `netlogo/seed_history.csv` for the Gym El Farol csv extension.
 
 Capacity fallback is the 95th percentile of observed 3WR+4WR counts: posted
-Rec Services capacities are not in the repo yet. Agent count is 100, with
-occupancy scaled so that N = 2 x peak in real units.
+Rec Services capacities are not in the repo yet. Occupancy, seeds and capacity
+are scaled by SCALE_BASE / (2 x peak); the simulated population is N_AGENTS.
 
     python analysis/calibrate.py
     python analysis/calibrate.py --self-test
@@ -35,16 +35,18 @@ SEED_CSV_PATH = ROOT / "netlogo" / "seed_history.csv"
 LOG_PATH = ROOT / "data" / "processed" / "calibrate.log"
 
 TZ_NAME = "America/Toronto"
-N_AGENTS = 100
+N_AGENTS = 400
+# Occupancy scale: value * SCALE_BASE / (2 * peak). Gives capacity 37 and the seeds.
+SCALE_BASE = 100
 SLOT_START = time(6, 30)
 SLOT_END = time(22, 0)
 SLOT_MINUTES = 30
 # A weekday-by-slot demand value needs at least this many observations; otherwise
 # it is left null and the model falls back to the pooled slot mean.
 MIN_DAY_OBS = 3
-WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-# Friday closes at 20:00, so the 31-slot window is only fully open Mon-Thu.
-FULL_WINDOW_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday")
+# The model uses Mon-Thu only (Friday closes at 20:00, so the 31-slot window is not fully open).
+WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday")
+FULL_WINDOW_DAYS = WEEKDAYS
 
 
 def setup_logging() -> None:
@@ -115,14 +117,14 @@ def calibration_sample(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def demand_sample(frame: pd.DataFrame) -> pd.DataFrame:
-    """Regular-term weekday evenings, including Friday before close."""
+    """Regular-term Mon-Thu days used for the per-weekday demand curve."""
     return regular_term(evening_window(frame, WEEKDAYS)).dropna(subset=["count_fitness"])
 
 
 def scale_occupancy(value: float, peak: float) -> float:
     if peak <= 0:
         return 0.0
-    return value * N_AGENTS / (2.0 * peak)
+    return value * SCALE_BASE / (2.0 * peak)
 
 
 def demand_curve(sample: pd.DataFrame) -> tuple[dict[str, dict[str, float | None]], dict[str, dict[str, int]]]:
@@ -285,11 +287,11 @@ def build_params(sample: pd.DataFrame, evening_all: pd.DataFrame) -> dict[str, A
         "capacity_unscaled": int(round(p95)),
         "n_agents": N_AGENTS,
         "capacity": capacity_scaled,
-        "scale_factor": round(N_AGENTS / (2.0 * peak), 6) if peak else 0,
+        "scale_factor": round(SCALE_BASE / (2.0 * peak), 6) if peak else 0,
         "scale_note": (
-            "n_agents=100 with occupancy scaled by 100/(2*peak), i.e. the "
-            "unscaled population is 2 x peak count. Use capacity_unscaled and "
-            "n_agents_unscaled to run in real head-count units."
+            f"n_agents={N_AGENTS} simulated agents. Seed occupancy and capacity are "
+            f"scaled by {SCALE_BASE}/(2*peak) (scale_factor). Use capacity_unscaled "
+            "and n_agents_unscaled for real head-count units."
         ),
         "slots": labels,
         "demand_curve": curve,
@@ -348,7 +350,7 @@ def write_seed_csv(params: dict[str, Any], path: Path) -> None:
     """Write the NetLogo csv-extension seed file from params.json.
 
     One row per evening slot. `mean_occupancy_scaled` is the weekday-pooled
-    mean; `monday_scaled` ... `friday_scaled` are the demand-curve values the
+    mean; `monday_scaled` ... `thursday_scaled` are the demand-curve values the
     model cycles through when filling each slot's memory.
     """
     labels = params["slots"]
@@ -471,7 +473,6 @@ def run_self_test() -> int:
             "Tuesday": {"16:00": 19.0, "16:30": None},
             "Wednesday": {"16:00": 18.5, "16:30": 22.5},
             "Thursday": {"16:00": 20.5, "16:30": 21.5},
-            "Friday": {"16:00": None, "16:30": None},
         },
     }
     probe_path = TARGETS_PATH.parent / "_seed_history_selftest.csv"

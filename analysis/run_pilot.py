@@ -1,11 +1,13 @@
 """Run a Gym El Farol BehaviorSpace experiment with NetLogo headless.
 
-Finds a local NetLogo 6.3+/7 install and writes a table CSV plus a timing
-log. Default is the 3x3 info-mode x memory-size pilot (5 seeds).
+Finds a local NetLogo 6.3+/7 install (NETLOGO_HOME overrides the search on any
+OS) and writes data/processed/<experiment>.csv plus <experiment>.log and
+<experiment>.meta.json. Default is the 3x3 info-mode x memory-size pilot (5 seeds).
 
     python analysis/run_pilot.py --smoke
     python analysis/run_pilot.py --experiment info-memory-pilot
     python analysis/run_pilot.py --experiment info-memory-grid
+    python analysis/run_pilot.py --experiment calibration-n
 """
 
 from __future__ import annotations
@@ -27,9 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NETLOGO_DIR = ROOT / "netlogo"
 MODEL_PATH = NETLOGO_DIR / "GymElFarol.nlogox"
 SETUP_PATH = NETLOGO_DIR / "experiments.xml"
-DEFAULT_OUT = ROOT / "data" / "processed" / "preferences_pilot.csv"
-LOG_PATH = ROOT / "data" / "processed" / "preferences_pilot.log"
-META_PATH = ROOT / "data" / "processed" / "preferences_pilot.meta.json"
+OUT_DIR = ROOT / "data" / "processed"
 
 NETLOGO_CANDIDATES = [
     Path(r"C:\Program Files\NetLogo 7.0.4"),
@@ -51,6 +51,7 @@ def _netlogo_homes() -> list[Path]:
     program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
     homes.extend(sorted(program_files.glob("NetLogo *"), reverse=True))
     homes.extend(NETLOGO_CANDIDATES)
+    homes.extend(sorted(Path("/Applications").glob("NetLogo *"), reverse=True))
     seen: set[Path] = set()
     unique: list[Path] = []
     for home in homes:
@@ -70,7 +71,7 @@ def find_netlogo_home(explicit: Path | None = None) -> Path:
             return explicit
         raise FileNotFoundError(f"NetLogo home not found: {explicit}")
     for home in _netlogo_homes():
-        if (home / "app").exists() or (home / "NetLogo_Console.exe").exists():
+        if any((home / "app").glob("netlogo-*.jar")) or (home / "NetLogo_Console.exe").exists():
             return home
     raise FileNotFoundError(
         "Could not find a NetLogo install. Install NetLogo 7 or set NETLOGO_HOME."
@@ -78,16 +79,20 @@ def find_netlogo_home(explicit: Path | None = None) -> Path:
 
 
 def find_bundled_java(home: Path) -> Path:
-    bundled = home / "runtime" / "bin" / "java.exe"
-    if bundled.exists():
-        return bundled
+    runtime = home / "runtime"
+    candidates = [
+        runtime / "bin" / "java.exe",
+        runtime / "bin" / "java",
+        runtime / "Contents" / "Home" / "bin" / "java",  # macOS bundle
+    ]
     env_home = os.environ.get("JAVA_HOME")
     if env_home:
-        java = Path(env_home) / "bin" / "java.exe"
-        if java.exists():
+        candidates += [Path(env_home) / "bin" / "java.exe", Path(env_home) / "bin" / "java"]
+    for java in candidates:
+        if java.is_file():
             return java
     raise FileNotFoundError(
-        f"No bundled Java in {home}\\runtime and JAVA_HOME is not set."
+        f"No bundled Java in {runtime} and no java under JAVA_HOME."
     )
 
 
@@ -99,13 +104,13 @@ def find_netlogo_jar(home: Path) -> Path:
     raise FileNotFoundError(f"No netlogo-*.jar in {app}")
 
 
-def setup_logging() -> None:
-    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+def setup_logging(log_path: Path) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         handlers=[
-            logging.FileHandler(LOG_PATH, encoding="utf-8"),
+            logging.FileHandler(log_path, encoding="utf-8"),
             logging.StreamHandler(sys.stdout),
         ],
     )
@@ -118,6 +123,8 @@ def default_threads() -> int:
 
 def staging_root() -> Path:
     """NetLogo 7 headless drops arguments after the first space in a path."""
+    if os.name != "nt":
+        return Path(tempfile.gettempdir())
     for candidate in (Path(r"C:\Temp"), Path(os.environ.get("TEMP", r"C:\Temp"))):
         try:
             candidate.mkdir(parents=True, exist_ok=True)
@@ -265,7 +272,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         default=None,
-        help="Table CSV path",
+        help="Table CSV path (default: data/processed/<experiment>.csv)",
     )
     parser.add_argument("--threads", type=int, default=0, help="0 = 75%% of CPUs")
     parser.add_argument(
@@ -283,12 +290,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    setup_logging()
     args = build_parser().parse_args()
     experiment = "smoke-one-day" if args.smoke else args.experiment
-    output = (
-        ROOT / "data" / "processed" / "preferences_smoke.csv" if args.smoke else (args.output or ROOT / "data" / "processed" / ("preferences_pilot.csv" if experiment == "info-memory-pilot" else "preferences_" + experiment + ".csv"))
-    )
+    output = args.output or OUT_DIR / f"{experiment}.csv"
+    setup_logging(output.with_suffix(".log"))
     threads = args.threads if args.threads > 0 else default_threads()
     home = find_netlogo_home(args.netlogo)
     run_experiment(experiment, output, threads, home)

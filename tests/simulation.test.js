@@ -37,11 +37,11 @@ test('flexibility expands the preferred start period by exactly the stated amoun
   assert.equal(last(1), 16); // Three hours: 14:30.
   assert.equal(last(3), 29); // Any available time: 21:00.
 });
-test('100-agent population has balanced marginal assignments', () => {
+test('400-agent population has balanced marginal assignments', () => {
   const pop = create().agents;
-  for (const key of ['availability', 'preference', 'flexibility']) assert.deepEqual([0, 1, 2, 3].map(i => pop.filter(a => a[key] === i).length), [25, 25, 25, 25]);
-  assert.deepEqual([0, 1, 2].map(i => pop.filter(a => a.crowding === i).length).sort(), [33, 33, 34]);
-  for (let group = 0; group < 4; group++) for (let pref = 0; pref < 4; pref++) assert([6, 7].includes(pop.filter(a => a.availability === group && a.preference === pref).length));
+  for (const key of ['availability', 'preference', 'flexibility']) assert.deepEqual([0, 1, 2, 3].map(i => pop.filter(a => a[key] === i).length), [100, 100, 100, 100]);
+  assert.deepEqual([0, 1, 2].map(i => pop.filter(a => a.crowding === i).length).sort(), [133, 133, 134]);
+  for (let group = 0; group < 4; group++) for (let pref = 0; pref < 4; pref++) assert.equal(pop.filter(a => a.availability === group && a.preference === pref).length, 25);
 });
 test('population assignment is stable across information and memory conditions', () => {
   const baseline = create({ populationSeed: 17 }).profileExport().agents;
@@ -83,11 +83,22 @@ test('run stops at the requested day count and preserves population profiles', (
   while (!s.done) s.step();
   const history = [...s.history]; for (let i = 0; i < 10; i++) assert.equal(s.step(), null);
   assert.equal(s.ticks, 93); assert.deepEqual(s.history, history); assert.deepEqual(s.profileExport().agents, initial);
-  assert.equal(s.metrics.visits + s.metrics.skips, 300);
+  assert.equal(s.metrics.visits + s.metrics.skips, 1200);
   assert.equal(s.history.reduce((a, b) => a + b, 0), 2 * s.metrics.visits);
+});
+test('validation reporters summarize post-burn-in slots', () => {
+  const s = create({ maxDays: 3, burnIn: 1 });
+  while (!s.done) s.step();
+  const r = G.reporters(s.metrics.occupancy), kept = s.history.slice(31);
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  assert.equal(r.slotMeanProfile.length, 31);
+  assert(Math.abs(mean(r.slotMeanProfile) - r.meanOccupancy) < 1e-9);
+  assert(Math.abs(r.meanOccupancy - mean(kept)) < 1e-9);
+  assert(Math.abs(r.dayToDayChange - mean(kept.slice(31).map((x, i) => Math.abs(x - kept[i])))) < 1e-9);
+  r.slotMeanProfile.forEach((v, i) => assert.equal(v, (kept[i] + kept[i + 31]) / 2));
 });
 test('same seeds reproduce trajectories and burn-in excludes complete days', () => {
   const a = create({ maxDays: 3, burnIn: 1 }), b = create({ maxDays: 3, burnIn: 1 });
   while (!a.done) { a.step(); b.step(); }
-  assert.deepEqual(a.history, b.history); assert.equal(a.metrics.slots, 62); assert.equal(a.metrics.agentDays, 200);
+  assert.deepEqual(a.history, b.history); assert.equal(a.metrics.slots, 62); assert.equal(a.metrics.agentDays, 800);
 });

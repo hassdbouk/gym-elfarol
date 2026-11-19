@@ -1,0 +1,5 @@
+2026-11-18 18:55:12,787 INFO NetLogo home: C:\Program Files\NetLogo 7.0.4
+2026-11-18 18:55:12,789 INFO Staged model dir: C:\Temp\gym-elfarol-bs
+2026-11-18 18:55:12,789 INFO Experiment: info-memory-grid  threads=12
+2026-11-18 18:55:12,789 INFO Command: C:\Program Files\NetLogo 7.0.4\runtime\bin\java.exe -XX:MaxRAMPercentage=50 -Dfile.encoding=UTF-8 -Dnetlogo.docs.dir=C:\Program Files\NetLogo 7.0.4 -Dnetlogo.models.dir=C:\Program Files\NetLogo 7.0.4\models -Dnetlogo.extensions.dir=C:\Program Files\NetLogo 7.0.4\extensions --add-exports=java.base/java.lang=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.desktop/sun.java2d=ALL-UNNAMED -classpath C:\Program Files\NetLogo 7.0.4\app\netlogo-7.0.4.jar org.nlogo.headless.Main --model C:\Temp\gym-elfarol-bs\GymElFarol.nlogox --experiment info-memory-grid --table C:\Temp\gym-elfarol-bs\info-memory-grid.csv --threads 12
+2026-11-18 19:03:49,141 INFO Finished info-memory-grid in 516.3 s -> C:\Users\Ayden\Desktop\Current School Term\4457 MultiAgent Systems\Group project\Repository\gym-elfarol\data\processed\info-memory-grid.csv (183671 bytes)
