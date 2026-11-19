@@ -1,0 +1,5 @@
+2026-11-18 18:51:28,967 INFO NetLogo home: C:\Program Files\NetLogo 7.0.4
+2026-11-18 18:51:28,968 INFO Staged model dir: C:\Temp\gym-elfarol-bs
+2026-11-18 18:51:28,968 INFO Experiment: smoke-one-day  threads=12
+2026-11-18 18:51:28,968 INFO Command: C:\Program Files\NetLogo 7.0.4\runtime\bin\java.exe -XX:MaxRAMPercentage=50 -Dfile.encoding=UTF-8 -Dnetlogo.docs.dir=C:\Program Files\NetLogo 7.0.4 -Dnetlogo.models.dir=C:\Program Files\NetLogo 7.0.4\models -Dnetlogo.extensions.dir=C:\Program Files\NetLogo 7.0.4\extensions --add-exports=java.base/java.lang=ALL-UNNAMED --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.desktop/sun.java2d=ALL-UNNAMED -classpath C:\Program Files\NetLogo 7.0.4\app\netlogo-7.0.4.jar org.nlogo.headless.Main --model C:\Temp\gym-elfarol-bs\GymElFarol.nlogox --experiment smoke-one-day --table C:\Temp\gym-elfarol-bs\smoke-one-day.csv --threads 12
+2026-11-18 18:51:37,387 INFO Finished smoke-one-day in 8.4 s -> C:\Users\Ayden\Desktop\Current School Term\4457 MultiAgent Systems\Group project\Repository\gym-elfarol\data\processed\smoke-one-day.csv (903 bytes)
