@@ -5,12 +5,12 @@
   "table": "C:\\Users\\Ayden\\Desktop\\Current School Term\\4457 MultiAgent Systems\\Group project\\Repository\\gym-elfarol\\data\\processed\\smoke-one-day.csv",
   "netlogo": "C:\\Program Files\\NetLogo 7.0.4",
   "threads": 12,
-  "started_utc": "2026-11-18T23:51:28.970404+00:00",
-  "elapsed_seconds": 8.411,
+  "started_utc": "2026-11-23T19:48:44.782816+00:00",
+  "elapsed_seconds": 12.625,
   "returncode": 0,
-  "table_bytes": 903,
+  "table_bytes": 894,
   "source_sha256": {
-    "netlogo\\GymElFarol.nlogox": "dbcf1f5736d96436efdc3ad78861f56f0c1c2410375f57650f8a222bf247ec16",
+    "netlogo\\GymElFarol.nlogox": "7836e3be7acc5a1f98c207b9944c0192f7e3d3c37223dc1a41c6cf8efcabd02b",
     "netlogo\\preferences.nls": "744c264857328c1d593ce479f881c500cce398ca16de02a221be891d9003c2db",
     "netlogo\\seed_history.csv": "5ec5c95872098eecd766f3e69c1a2324693e9c36420d17e0428fd0b38f4fade0",
     "web\\profile-rules.csv": "530b34170490e1b73badf9b36ac6fc3cfdf7fc4c55d0f780fd0486dcd65d529c"

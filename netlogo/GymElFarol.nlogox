@@ -467,15 +467,17 @@ end
 ;; using a particular strategy and portion of the attendance history.
 ;; More specifically, the strategy is then described by the formula
 ;; p(t) = x(t - 1) * a(t - 1) + x(t - 2) * a(t -2) +..
-;;      ... + x(t - MEMORY-SIZE) * a(t - MEMORY-SIZE) + c * 100,
+;;      ... + x(t - MEMORY-SIZE) * a(t - MEMORY-SIZE) + c * CAPACITY,
 ;; where p(t) is the prediction at time t, x(t) is the attendance of the bar at time t,
 ;; a(t) is the weight for time t, c is a constant, and MEMORY-SIZE is an external parameter.
 to-report predict-attendance [strategy subhistory]
   ;; the first element of the strategy is the constant, c, in the prediction formula.
   ;; one can think of it as the the agent's prediction of the bar's attendance
   ;; in the absence of any other data
+  ;; The constant is scaled by capacity so it is on the same scale as one slot's
+  ;; occupancy (the original model's 100 was its crowd size, not the population).
   ;; then we multiply each week in the history by its respective weight
-  report n-agents * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
+  report capacity * first strategy + sum (map [ [weight week] -> weight * week ] butfirst strategy subhistory)
 end
 
 ;; In this model it doesn't really matter exactly which patch
