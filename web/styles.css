@@ -51,3 +51,30 @@ button:focus-visible, summary:focus-visible { outline: 2px solid white; outline-
 .agent-detail dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .population-summary { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 540px) { .population-summary { grid-template-columns: 1fr; } .agent-detail dl { grid-template-columns: 110px 1fr; } .legend { flex-wrap: wrap; } }
+
+/* Chart inspection */
+.chart-wrap { position: relative; }
+canvas#occupancy-chart { cursor: crosshair; touch-action: pan-y; }
+.chart-tooltip, .agent-tooltip { pointer-events: none; background: #0e1117f2; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.45; box-shadow: 0 8px 24px #0006; z-index: 10; }
+.chart-tooltip { position: absolute; min-width: 150px; }
+.agent-tooltip { position: fixed; max-width: 280px; }
+.chart-tooltip[hidden], .agent-tooltip[hidden] { display: none; }
+.chart-tooltip strong, .agent-tooltip strong { color: var(--text); }
+.tip-muted { color: var(--muted); }
+.tip-over { color: var(--red); }
+.tip-ok { color: var(--green); }
+.scrubber { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.scrubber label { color: var(--muted); font-size: 12px; }
+.scrubber input { flex: 1; min-width: 0; }
+.scrubber output { min-width: 190px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.scrubber .button { padding: 6px 10px; }
+@media (max-width: 540px) { .scrubber { flex-wrap: wrap; } .scrubber output { min-width: 0; flex: 1; } }
+
+/* Agent recent days */
+.agent-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.agent-history li { display: flex; gap: 8px; align-items: baseline; }
+.agent-history .day-tag { color: var(--muted); min-width: 44px; }
+.badge { display: inline-block; border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; }
+.badge.good { background: #6ee7b722; color: var(--green); }
+.badge.crowded { background: #ff6b6b22; color: var(--red); }
+.badge.skipped { background: #8d99a822; color: var(--muted); }

@@ -6,7 +6,7 @@ No third-party Python or JavaScript packages are needed for the browser.
 
 Choose None, Live, or Delayed information, then use Start simulation or Step. Each tick is 30 minutes. Workouts last one hour and fit inside individual availability windows. Reset replays the same population and strategy seeds; change a seed to explore a different assignment. Changing information or memory restarts with the same population. The run stops at the selected day limit.
 
-Select an agent to inspect their availability, preferred period, flexibility, crowding preference, allowed start times, and current status. The population panel shows group counts. Download agent profiles saves the full assignment and configuration as JSON.
+Select an agent to inspect their availability, preferred period, flexibility, crowding preference, allowed start times, current status, and their last 3 completed days (workout time, peak occupancy, good/crowded/skipped). Hovering an agent shows the same summary as a popup. On the occupancy chart, hover any point for its day, time, occupancy, arrivals and departures, or drag the time slider (click the chart to pin a slot; "Latest" returns to the live position). Yellow dots mark the selected agent's recent workouts. The population panel shows group counts. Download agent profiles saves the full assignment and configuration as JSON.
 
 The rule definitions are in `web/profile-rules.csv`, shared with NetLogo. The server exposes the existing `netlogo/seed_history.csv` at `/seed-history.csv`. Open the page through the server so both CSV files load.
 

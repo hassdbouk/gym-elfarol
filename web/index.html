@@ -72,7 +72,7 @@
       <section class="metrics">
         <article class="metric panel"><span>Current slot</span><strong id="metric-slot">06:30</strong><small id="metric-day">Day 1</small></article>
         <article class="metric panel"><span>Occupancy</span><strong id="metric-attendance">0 / 37</strong><small id="metric-capacity">Capacity 37</small></article>
-        <article class="metric panel"><span>New arrivals this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 going Â· 0 waiting</small></article>
+        <article class="metric panel"><span>New arrivals this slot</span><strong id="metric-decisions">0</strong><small id="metric-breakdown">0 going · 0 waiting</small></article>
         <article class="metric panel"><span>Peak so far</span><strong id="metric-peak">0</strong><small id="metric-over">No crowding yet</small></article>
       </section>
 
@@ -82,8 +82,9 @@
             <div><p class="eyebrow">AGENT FIELD</p><h2>What the population is doing</h2></div>
             <div class="legend"><span><i class="legend-dot going"></i>In gym</span><span><i class="legend-dot waiting"></i>Waiting</span><span><i class="legend-dot skipped"></i>Skipped</span><span><i class="legend-dot done"></i>Finished</span></div>
           </div>
-          <p class="muted">Select an agent to inspect their schedule and preferences.</p>
+          <p class="muted">Hover an agent for a quick look; select one to inspect their schedule, preferences, and last 3 days.</p>
           <div id="agent-grid" class="agent-grid" aria-label="Agent decision field"></div>
+          <div id="agent-tooltip" class="agent-tooltip" hidden></div>
           <div id="agent-detail" class="agent-detail" aria-live="polite"></div>
         </article>
 
@@ -94,8 +95,14 @@
       </section>
 
       <section class="panel chart-panel">
-        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">orange line = capacity Â· older data is compressed, not dropped</span></div>
-        <div class="chart-wrap"><canvas id="occupancy-chart" height="220"></canvas></div>
+        <div class="section-heading"><div><p class="eyebrow">SIMULATION HISTORY</p><h2>Occupancy across the simulation</h2></div><span class="chart-note">hover or drag the slider to inspect a slot · dots = selected agent's workouts · orange line = capacity · older data is compressed, not dropped</span></div>
+        <div class="chart-wrap" id="chart-wrap"><canvas id="occupancy-chart" height="220"></canvas><div id="chart-tooltip" class="chart-tooltip" hidden></div></div>
+        <div class="scrubber">
+          <label for="history-slider">Time</label>
+          <input id="history-slider" type="range" min="0" max="0" value="0" step="1" disabled>
+          <output id="history-readout">No data yet</output>
+          <button type="button" id="history-live" class="button secondary">Latest</button>
+        </div>
       </section>
 
       <footer>Browser visualization of the decision rules in <code>netlogo/GymElFarol.nlogox</code>. The NetLogo model remains the experiment source of truth.</footer>
