@@ -1,0 +1,18 @@
+{
+  "experiment": "info-memory-grid",
+  "model": "C:\\Users\\Ayden\\Desktop\\Current School Term\\4457 MultiAgent Systems\\Group project\\Repository\\gym-elfarol\\netlogo\\GymElFarol.nlogox",
+  "setup_file": "C:\\Users\\Ayden\\Desktop\\Current School Term\\4457 MultiAgent Systems\\Group project\\Repository\\gym-elfarol\\netlogo\\experiments.xml",
+  "table": "C:\\Users\\Ayden\\Desktop\\Current School Term\\4457 MultiAgent Systems\\Group project\\Repository\\gym-elfarol\\data\\processed\\info-memory-grid.csv",
+  "netlogo": "C:\\Program Files\\NetLogo 7.0.4",
+  "threads": 12,
+  "started_utc": "2026-11-18T23:55:12.790551+00:00",
+  "elapsed_seconds": 516.344,
+  "returncode": 0,
+  "table_bytes": 183671,
+  "source_sha256": {
+    "netlogo\\GymElFarol.nlogox": "dbcf1f5736d96436efdc3ad78861f56f0c1c2410375f57650f8a222bf247ec16",
+    "netlogo\\preferences.nls": "744c264857328c1d593ce479f881c500cce398ca16de02a221be891d9003c2db",
+    "netlogo\\seed_history.csv": "5ec5c95872098eecd766f3e69c1a2324693e9c36420d17e0428fd0b38f4fade0",
+    "web\\profile-rules.csv": "530b34170490e1b73badf9b36ac6fc3cfdf7fc4c55d0f780fd0486dcd65d529c"
+  }
+}

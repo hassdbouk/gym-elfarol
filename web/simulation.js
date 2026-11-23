@@ -105,10 +105,10 @@
     let best = agent.strategies[0], bestError = Infinity;
     for (const strategy of agent.strategies) {
       let error = 0;
-      for (let day = 1; day <= options.memory; day++) error += Math.abs(history[day - 1] - predict(strategy, history.slice(day, day + options.memory), options.agentCount));
+      for (let day = 1; day <= options.memory; day++) error += Math.abs(history[day - 1] - predict(strategy, history.slice(day, day + options.memory), options.capacity));
       if (error <= bestError) { bestError = error; best = strategy; }
     }
-    return predict(best, history.slice(0, options.memory), options.agentCount);
+    return predict(best, history.slice(0, options.memory), options.capacity);
   }
   class Simulation {
     constructor(rules, seedHistory, options = {}) {

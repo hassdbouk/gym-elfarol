@@ -23,7 +23,7 @@ The canonical profile definitions are `web/profile-rules.csv`. Both implementati
 
 At each slot, agents whose workout has ended leave first. Agents who have not visited consider their remaining allowed start slots:
 
-1. The current slot's prediction comes from that agent's best linear predictor, with the existing 50/50 live or delayed information blend. A missing early-day information signal falls back to the inductive prediction.
+1. The current slot's prediction comes from that agent's best linear predictor, with the existing 50/50 live or delayed information blend. A missing early-day information signal falls back to the inductive prediction. The predictor's constant term is scaled by capacity, so it is on the same scale as one slot's occupancy.
 2. Future candidate slots use their historical mean over the chosen memory length. Agents never see future actual occupancy. These estimates are refreshed when the next slot is reached.
 3. Predictions are bounded to zero through population size. Starts predicted to exceed capacity are excluded.
 4. Candidate score is `crowding direction * predicted occupancy / capacity - time cost`. Direction is 0 for indifferent, +1 for busy-seeking, and -1 for quiet-seeking. Time cost is the distance outside the preferred start period divided by the flexibility allowance. Unlimited flexibility uses the 930-minute operating span; Whenever has zero time cost. This equal weighting is an explicit implementation assumption.
